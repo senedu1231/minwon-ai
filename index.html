@@ -169,7 +169,6 @@
     .choice.selected { border-color: rgba(37,99,235,.5); background: rgba(37,99,235,.09); color: var(--primary); box-shadow: 0 3px 12px rgba(37,99,235,.12); font-weight: 950; }
     .choice input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
 
-    /* ── 토글 ── */
     .toggle-row {
       display: flex; align-items: center; gap: 12px; margin-top: 14px;
       cursor: pointer; user-select: none; padding: 12px 12px; border-radius: 12px;
@@ -178,7 +177,6 @@
     }
     .toggle-row:hover { background: rgba(22,163,74,.09); border-color: rgba(22,163,74,.36); transform: translate3d(0,-1px,0); }
 
-    /* AI 토글 — 인디고 */
     .toggle-row-ai {
       border-color: rgba(99,102,241,.26) !important;
       background: rgba(99,102,241,.06) !important;
@@ -198,7 +196,6 @@
     }
     .toggle-wrap input:checked ~ .toggle-track { background: var(--success); }
     .toggle-wrap input:checked ~ .toggle-track::after { transform: translateX(18px); }
-    /* AI 토글 켜졌을 때 인디고 */
     .toggle-wrap-ai input:checked ~ .toggle-track { background: var(--indigo) !important; }
 
     .toggle-label { font-size: 13.5px; font-weight: 900; color: rgba(11,18,32,.86); flex: 1; }
@@ -212,7 +209,6 @@
       border-color: rgba(99,102,241,.25) !important;
     }
 
-    /* ── 슬라이드 패널 ── */
     .slide-panel {
       max-height: 0; overflow: hidden;
       transition: max-height .45s var(--ease2), opacity .35s var(--ease);
@@ -224,7 +220,6 @@
       border: 1px dashed rgba(99,102,241,.40); background: rgba(99,102,241,.05);
     }
 
-    /* 안내 박스 */
     .guide-box {
       margin-bottom: 14px; padding: 14px 16px; border-radius: 12px;
       background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.22);
@@ -236,7 +231,6 @@
       padding: 2px 7px; border-radius: 6px; font-family: monospace; font-size: 12.5px; font-weight: 800;
     }
 
-    /* AI 상태 바 */
     .ai-status {
       display: none; align-items: center; gap: 8px;
       margin-top: 10px; padding: 10px 12px; border-radius: 10px;
@@ -246,12 +240,10 @@
     .ai-status.error   { display: flex; background: rgba(220,38,38,.08); color: var(--danger); border: 1px solid rgba(220,38,38,.2); }
     .ai-status.ok      { display: flex; background: rgba(22,163,74,.08); color: var(--success); border: 1px solid rgba(22,163,74,.22); }
 
-    /* ── Expand panels (민원유형) ── */
     .special { max-height: 0; overflow: hidden; transition: max-height .4s var(--ease2), opacity .3s var(--ease); opacity: 0; }
     .special.active { max-height: 220px; opacity: 1; }
     .special-inner { margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(37,99,235,.40); background: rgba(37,99,235,.06); }
 
-    /* ── Buttons ── */
     .btn-row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
     button {
       border: none; border-radius: 14px; padding: 14px;
@@ -285,7 +277,6 @@
     .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Result ── */
     .result {
       border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
       background: #fff; box-shadow: var(--shadow-soft); opacity: 0;
@@ -310,7 +301,6 @@
     .char-count { font-size: 11.5px; color: var(--muted); font-weight: 700; text-align: right; margin-top: 6px; font-family: monospace; }
     .result-actions { padding: 14px; border-top: 1px solid var(--border); background: rgba(15,23,42,.015); }
 
-    /* ── Toast ── */
     .toast {
       position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(8px);
       background: rgba(11,18,32,.92); color: #fff; padding: 12px 18px; border-radius: 999px;
@@ -596,9 +586,16 @@
     function normalizePhone(raw) { return String(raw||'').trim().replace(/^☏\s*/g,''); }
 
     /* ─────────────────────────────────────────────
+       ✅ 생성 결과를 "새로고침"처럼 매번 리셋 + 재생성
+       ───────────────────────────────────────────── */
+    function resetResultUI({ clearArea=true, resetDot=true } = {}) {
+      if (resetDot) $('resultDot').classList.remove('active');
+      if (clearArea) $('resultArea').textContent = '';
+    }
+
+    /* ─────────────────────────────────────────────
        ✅ Gemini(Worker)로 요지/초안 생성
-       Worker 응답(JSON) 예시:
-       { "summary": "...", "draft": "가. ...\n나. ..." }
+       성공하면: summary/content 채움 → 자동으로 서식 생성까지 실행
        ───────────────────────────────────────────── */
     $('btnAI').addEventListener('click', async () => {
       const rawText = $('rawMinwon').value.trim();
@@ -622,7 +619,7 @@
           body: JSON.stringify({
             text: rawText,
             dept,
-            mode: "both"   // Worker에서: "summary" | "draft" | "both" 로 분기 가능
+            mode: "both"
           })
         });
 
@@ -638,8 +635,12 @@
         if (data.draft)   $('content').value = data.draft;
 
         $('charCount').textContent = $('content').value.length + '자';
-        setAIStatus('자동 생성 완료! 내용을 검토·수정한 뒤 아래 서식 생성 버튼을 눌러주세요.', 'ok');
-        showToast('AI 초안 생성 완료 ✨', '✨');
+
+        // ✅ 여기서 바로 "서식 생성하기" 자동 실행 (밑 결과 새로고침)
+        setAIStatus('자동 생성 완료! (서식 생성까지 자동으로 진행합니다)', 'ok');
+        showToast('AI 초안 생성 → 서식 자동 생성 ✨', '✨');
+
+        await generate({ clearArea:true, resetDot:true, scrollToResult:true });
 
       } catch (err) {
         setAIStatus('AI 호출 실패: ' + err.message, 'error');
@@ -651,11 +652,27 @@
       }
     });
 
-    /* ── 최종 서식 생성 ── */
-    async function generate() {
+    /* ── 최종 서식 생성 ──
+       - 수동으로 눌러도 "밑 결과 새로고침" 되게
+       - 옵션: clearArea/resetDot/scrollToResult
+    ───────────────────────────────────────────── */
+    async function generate(opts = {}) {
+      const {
+        clearArea = true,
+        resetDot = true,
+        scrollToResult = false
+      } = opts;
+
       const btn = $('btnGenerate');
-      $('btnText').style.display = 'none'; $('btnSpin').style.display = 'inline-block'; btn.disabled = true;
-      await new Promise(r => setTimeout(r, 480));
+      $('btnText').style.display = 'none';
+      $('btnSpin').style.display = 'inline-block';
+      btn.disabled = true;
+
+      // ✅ 결과 영역을 "새로고침"처럼 리셋
+      resetResultUI({ clearArea, resetDot });
+
+      // 아주 짧게 UX 딜레이
+      await new Promise(r => setTimeout(r, 260));
 
       const caseNum = $('caseNum').value.trim()  || '1AA-0000-0000000';
       const dept    = $('dept').value.trim()      || 'OOO과';
@@ -702,14 +719,31 @@ ${closing}`;
 
       const area = $('resultArea');
       area.textContent = '';
-      const chars = [...template]; let i = 0;
+
+      // 결과로 스크롤(옵션)
+      if (scrollToResult) {
+        const top = area.getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+
+      const chars = [...template];
+      let i = 0;
+
+      // ✅ 기존 타이핑 애니메이션 유지 (새로 생성될 때마다 처음부터)
       const step = () => {
-        if (i < chars.length) { area.textContent += chars[i++]; setTimeout(step, i < 80 ? 6 : 1); }
-        else { $('resultDot').classList.add('active'); showToast('생성 완료 — 결과에서 바로 수정 가능', '✨'); }
+        if (i < chars.length) {
+          area.textContent += chars[i++];
+          setTimeout(step, i < 80 ? 6 : 1);
+        } else {
+          $('resultDot').classList.add('active');
+          showToast('생성 완료 — 필요하면 다시 생성 가능', '✨');
+        }
       };
       step();
 
-      btn.disabled = false; $('btnText').style.display = 'inline'; $('btnSpin').style.display = 'none';
+      btn.disabled = false;
+      $('btnText').style.display = 'inline';
+      $('btnSpin').style.display = 'none';
     }
 
     /* ── 복사 ── */
@@ -728,14 +762,16 @@ ${closing}`;
     }
 
     /* ── 이벤트 연결 ── */
-    $('btnGenerate').addEventListener('click', generate);
+    $('btnGenerate').addEventListener('click', () => generate({ clearArea:true, resetDot:true }));
     $('btnGenerate').addEventListener('pointerdown', e => ripple($('btnGenerate'), e));
     $('btnCopy').addEventListener('click', copyText);
     $('btnCopy').addEventListener('pointerdown', e => ripple($('btnCopy'), e));
     $('btnAI').addEventListener('pointerdown', e => ripple($('btnAI'), e));
+
+    // Ctrl/⌘ + Enter → 생성(수동 새로고침)
     document.addEventListener('keydown', e => {
       const mod = navigator.platform.toUpperCase().includes('MAC') ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === 'Enter') { e.preventDefault(); generate(); }
+      if (mod && e.key === 'Enter') { e.preventDefault(); generate({ clearArea:true, resetDot:true, scrollToResult:true }); }
     });
 
     window.addEventListener('load', () => $('caseNum').focus());
