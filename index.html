@@ -541,7 +541,7 @@
      * ✅ 여기에 Cloudflare Worker URL을 넣으면 됨
      * 예) const WORKER_URL = "https://icy-art-4e14.hdh1231.workers.dev";
      */
-    const WORKER_URL = "https://YOUR-WORKER-URL-HERE"; // ← 나중에 여기만 교체
+    const WORKER_URL = "https://icy-art-4e14.hdh1231.workers.dev"; // ← 나중에 여기만 교체
     const AI_ENDPOINT = WORKER_URL.replace(/\/+$/,'') + "/api/generate";
 
     /* ── 스크롤 프로그레스 ── */
@@ -758,4 +758,5 @@ ${closing}`;
     window.addEventListener('load', () => $('caseNum').focus());
   </script>
 </body>
+
 </html>
