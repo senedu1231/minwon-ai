@@ -1,780 +1,1061 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>국민신문고 민원답변 생성기</title>
-  <style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css');
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>민원봇 — AI 민원답변 생성기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+/* ══ LIGHT THEME (default) ══ */
+:root,[data-theme="light"]{
+  --bg:#f0f4fa;
+  --s1:#ffffff;--s2:#f7f9fd;--s3:#eef1f8;--s4:#e4e9f4;
+  --b:rgba(37,99,235,.09);--b2:rgba(37,99,235,.16);--b3:rgba(37,99,235,.30);
+  --text:#1a2540;--muted:#96a5bf;--muted2:#5a6e90;
+  --blue:#2563eb;--blue2:#1d4ed8;--cyan:#0891b2;
+  --green:#059669;--green2:#10b981;
+  --purple:#7c3aed;--amber:#d97706;--amber2:#b45309;
+  --red:#dc2626;--red2:#ef4444;
+  --shadow:rgba(37,99,235,.1);
+  --card-border:rgba(37,99,235,.12);
+  --hdr-bg:rgba(255,255,255,.95);
+  --input-bg:#f0f4fa;
+}
+/* ══ DARK THEME ══ */
+[data-theme="dark"]{
+  --bg:#04060d;
+  --s1:#090e1a;--s2:#0d1424;--s3:#13192e;--s4:#192038;
+  --b:rgba(79,143,255,.07);--b2:rgba(79,143,255,.14);--b3:rgba(79,143,255,.28);
+  --text:#dde8f8;--muted:#4a5a72;--muted2:#7a9ab8;
+  --blue:#4f8fff;--blue2:#82b8ff;--cyan:#06b6d4;
+  --green:#10b981;--green2:#34d399;
+  --purple:#7c6aff;--amber:#f59e0b;--amber2:#fbbf24;
+  --red:#ef4444;--red2:#f87171;
+  --shadow:rgba(0,0,0,.35);
+  --card-border:rgba(79,143,255,.14);
+  --hdr-bg:rgba(4,6,13,.94);
+  --input-bg:#192038;
+}
 
-    :root{
-      --bg: #f5f7fb;
-      --surface: rgba(255,255,255,.76);
-      --surface-solid: #ffffff;
-      --text: #0b1220;
-      --muted: rgba(11,18,32,.62);
-      --border: rgba(15,23,42,.10);
-      --border-strong: rgba(15,23,42,.16);
-      --primary: #2563eb;
-      --primary-600: #1d4ed8;
-      --success: #16a34a;
-      --success-600: #15803d;
-      --danger: #dc2626;
-      --indigo: #6366f1;
-      --indigo-600: #4f46e5;
-      --shadow: 0 18px 60px rgba(2,6,23,.10);
-      --shadow-soft: 0 10px 28px rgba(2,6,23,.08);
-      --shadow-hover: 0 22px 70px rgba(2,6,23,.14);
-      --radius: 18px;
-      --focus: 0 0 0 4px rgba(37,99,235,.16);
-      --font: "Pretendard Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif;
-      --ease: cubic-bezier(.2,.8,.2,1);
-      --ease2: cubic-bezier(.22,1,.36,1);
-    }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);transition:background .3s,color .3s;}
+html{font-size:16px;}body{font-family:'Noto Sans KR',sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;}
 
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; font-family: var(--font); color: var(--text);
-      background: var(--bg); line-height: 1.65; padding: 24px; overflow-x: hidden;
-    }
+/* bg grid only for dark */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .4s;}
+[data-theme="dark"] .bg{opacity:1;}
+.bg::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 900px 500px at 20% -5%,rgba(79,143,255,.09),transparent 55%),
+             radial-gradient(ellipse 700px 500px at 80% 105%,rgba(124,106,255,.07),transparent 55%);}
+.bg-grid{position:absolute;inset:0;
+  background-image:linear-gradient(var(--b) 1px,transparent 1px),linear-gradient(90deg,var(--b) 1px,transparent 1px);
+  background-size:52px 52px;mask-image:radial-gradient(ellipse 90% 90% at 50% 50%,black 20%,transparent 80%);}
 
-    #scrollLine {
-      position: fixed; top: 0; left: 0; height: 3px; width: 0;
-      background: linear-gradient(90deg, var(--primary), #60a5fa);
-      z-index: 9999; transition: width .1s linear; border-radius: 0 2px 2px 0;
-    }
+/* ── HEADER ── */
+.hdr{flex-shrink:0;height:54px;display:flex;align-items:center;gap:10px;padding:0 16px;
+  border-bottom:1px solid var(--b2);background:var(--hdr-bg);backdrop-filter:blur(20px);z-index:50;position:relative;
+  box-shadow:0 1px 8px var(--shadow);}
+.hdr-av{width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  border:1px solid var(--b3);display:flex;align-items:center;justify-content:center;font-size:1.125em;}
+.hdr-name{font-size:0.875em;font-weight:700;font-family:'Space Mono',monospace;color:var(--blue);}
+.hdr-st{font-size:0.6875em;color:var(--muted2);display:flex;align-items:center;gap:4px;font-family:'Space Mono',monospace;}
+.hdr-dot{width:6px;height:6px;border-radius:50%;background:var(--green2);animation:glw 2s infinite;}
+@keyframes glw{0%,100%{box-shadow:0 0 4px var(--green2);}50%{box-shadow:0 0 12px var(--green2);opacity:.6;}}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
 
-    .bg {
-      position: fixed; inset: 0; z-index: -2; pointer-events: none;
-      background:
-        radial-gradient(1100px 520px at 12% 12%, rgba(37,99,235,.12), transparent 60%),
-        radial-gradient(900px 440px at 88% 18%, rgba(22,163,74,.10), transparent 60%),
-        radial-gradient(760px 420px at 48% 98%, rgba(99,102,241,.10), transparent 62%),
-        linear-gradient(180deg, #f6f8fc, #f1f5fb);
-    }
-    .bg::before, .bg::after {
-      content: ""; position: absolute; inset: -120px;
-      background:
-        radial-gradient(420px 420px at 18% 28%, rgba(99,102,241,.10), transparent 60%),
-        radial-gradient(500px 500px at 82% 22%, rgba(234,179,8,.08), transparent 62%),
-        radial-gradient(520px 520px at 58% 78%, rgba(37,99,235,.08), transparent 62%);
-      filter: blur(12px); opacity: .9; animation: floaty 18s var(--ease2) infinite alternate;
-    }
-    .bg::after { opacity: .75; animation-duration: 26s; animation-direction: alternate-reverse; }
-    @keyframes floaty {
-      0%   { transform: translate3d(-8px,-10px,0) scale(1.01); }
-      50%  { transform: translate3d(10px,6px,0) scale(1.02); }
-      100% { transform: translate3d(-6px,12px,0) scale(1.01); }
-    }
-    .noise {
-      position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .05;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-      background-size: 220px 220px; mix-blend-mode: multiply;
-    }
+/* 점수 알약 */
+.score-pill{display:flex;align-items:center;gap:8px;padding:4px 12px;
+  background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.25);border-radius:10px;
+  font-family:'Space Mono',monospace;color:var(--muted2);}
+.sp-val{font-size:1.25em;font-weight:900;color:var(--amber);line-height:1;}
 
-    .container {
-      max-width: 1040px; margin: 0 auto; background: var(--surface);
-      border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px);
-      box-shadow: var(--shadow); overflow: hidden;
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    }
+/* 폰트 버튼 그룹 */
+.font-ctrl{display:flex;align-items:center;gap:3px;background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:3px;}
+.font-btn{width:28px;height:28px;border:none;background:transparent;cursor:pointer;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted2);font-weight:700;
+  font-family:'Space Mono',monospace;font-size:0.8125em;transition:all .15s;}
+.font-btn:hover{background:var(--b2);color:var(--text);}
+.font-btn.active{background:var(--blue);color:#fff;}
 
-    .header {
-      padding: 30px 34px 16px; border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.60));
-      position: relative;
-    }
-    .header::after {
-      content: ""; position: absolute; left: 34px; right: 34px; bottom: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(37,99,235,.35), transparent); opacity: .6;
-    }
-    .title {
-      margin: 0; font-size: 22px; letter-spacing: -0.4px;
-      display: flex; align-items: center; gap: 10px; font-weight: 900;
-    }
-    .title-badge {
-      width: 36px; height: 36px; border-radius: 12px;
-      background: linear-gradient(135deg, rgba(37,99,235,.18), rgba(37,99,235,.06));
-      border: 1px solid rgba(37,99,235,.22);
-      display: inline-flex; align-items: center; justify-content: center; font-size: 18px;
-    }
-    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 650; letter-spacing: -0.1px; }
+/* 테마 토글 */
+.theme-btn{width:36px;height:36px;border:1px solid var(--b2);border-radius:9px;
+  background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:1.125em;transition:all .2s;}
+.theme-btn:hover{border-color:var(--b3);transform:scale(1.05);}
 
-    .content { padding: 24px 34px 34px; }
-    .grid { display: grid; gap: 18px; }
+.hdr-btn{padding:5px 12px;border-radius:8px;background:var(--s2);border:1px solid var(--b2);
+  font-size:0.75em;font-weight:600;color:var(--muted2);cursor:pointer;font-family:'Space Mono',monospace;transition:all .2s;}
+.hdr-btn:hover{color:var(--text);border-color:var(--b3);}
 
-    .section {
-      background: var(--surface-solid); border: 1px solid var(--border);
-      border-radius: var(--radius); box-shadow: var(--shadow-soft);
-      padding: 20px 20px 18px; transform: translate3d(0,0,0);
-      transition: transform .22s var(--ease), box-shadow .22s var(--ease), border-color .22s var(--ease);
-      opacity: 0; animation: cardIn .55s var(--ease2) both; position: relative; overflow: hidden;
-    }
-    .section::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, var(--primary), #60a5fa, transparent);
-      opacity: 0; transition: opacity .3s var(--ease);
-    }
-    .section:hover::before { opacity: 1; }
-    .section:nth-child(1){ animation-delay: .07s; }
-    .section:nth-child(2){ animation-delay: .15s; }
-    .section:nth-child(3){ animation-delay: .23s; }
-    .section:nth-child(4){ animation-delay: .31s; }
-    .section:nth-child(5){ animation-delay: .38s; }
-    @keyframes cardIn {
-      from { opacity:0; transform: translate3d(0, 18px, 0); }
-      to   { opacity:1; transform: translate3d(0, 0, 0); }
-    }
-    .section:hover { transform: translate3d(0,-4px,0); box-shadow: var(--shadow-hover); border-color: rgba(37,99,235,.18); }
+/* ── STEP BAR ── */
+.step-bar{flex-shrink:0;height:38px;display:flex;align-items:center;padding:0 12px;
+  border-bottom:1px solid var(--b);background:var(--s2);z-index:40;overflow-x:auto;}
+.step-bar::-webkit-scrollbar{display:none;}
+.si{display:flex;align-items:center;gap:5px;padding:0 8px;height:100%;
+  font-size:0.75em;font-weight:600;font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap;}
+.si.on{color:var(--blue);}
+.si.done{color:var(--green);}
+.si-n{width:19px;height:19px;border-radius:50%;background:var(--s3);border:1px solid var(--b2);
+  display:flex;align-items:center;justify-content:center;font-size:0.625em;transition:all .3s;}
+.si.on .si-n{background:rgba(37,99,235,.15);border-color:var(--blue);color:var(--blue);}
+.si.done .si-n{background:rgba(5,150,105,.15);border-color:var(--green);color:var(--green);}
+.si-arr{color:var(--muted);font-size:0.625em;opacity:.4;padding:0 1px;}
 
-    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .section-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15.5px; letter-spacing: -0.2px; font-weight: 950; }
-    .icon {
-      width: 30px; height: 30px; border-radius: 12px;
-      display: inline-flex; align-items: center; justify-content: center;
-      background: rgba(37,99,235,.10); border: 1px solid rgba(37,99,235,.18);
-      color: var(--primary); font-weight: 900; font-size: 13px;
-    }
-    .pill { font-size: 12px; font-weight: 800; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: rgba(15,23,42,.03); }
+/* ── SCREENS ── */
+.screens{position:absolute;top:92px;bottom:0;left:0;right:0;z-index:1;pointer-events:none;}
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  opacity:0;pointer-events:none;
+  transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .32s cubic-bezier(.22,1,.36,1);
+  transform:translateX(36px);}
+.scr::-webkit-scrollbar{width:4px;}
+.scr::-webkit-scrollbar-thumb{background:var(--b2);border-radius:4px;}
+.scr.show{opacity:1;pointer-events:all;transform:none;}
+.scr.out{opacity:0;transform:translateX(-36px);}
+.sw{max-width:620px;margin:0 auto;padding:24px 20px 60px;}
 
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px; }
-    @media (max-width: 360px){ .info-grid, .form-row { grid-template-columns: 1fr; } }
+/* ── 3-COLUMN SPLIT ── */
+.split3{position:absolute;top:92px;bottom:0;left:0;right:0;display:flex;overflow:hidden;
+  opacity:0;pointer-events:none;z-index:2;
+  transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .32s cubic-bezier(.22,1,.36,1);
+  transform:translateX(36px);}
+.split3.show{opacity:1;pointer-events:all;transform:none;}
+.split3.out{opacity:0;pointer-events:none;transform:translateX(-36px);}
+.col-score{width:310px;flex-shrink:0;overflow-y:auto;padding:14px;border-right:1px solid var(--b2);background:var(--s2);}
+.col-score::-webkit-scrollbar{width:3px;}
+.col-score::-webkit-scrollbar-thumb{background:var(--b2);}
+.col-center{width:300px;flex-shrink:0;overflow-y:auto;padding:14px;border-right:1px solid var(--b2);background:var(--s3);}
+.col-center::-webkit-scrollbar{width:3px;}
+.col-center::-webkit-scrollbar-thumb{background:var(--b2);}
+.col-result{flex:1;min-width:0;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;background:var(--s1);}
+.col-result::-webkit-scrollbar{width:4px;}
+.col-result::-webkit-scrollbar-thumb{background:var(--b2);}
+@media(max-width:960px){
+  .split3{flex-direction:column;overflow-y:auto;}
+  .col-score,.col-center{width:100%;border-right:none;border-bottom:1px solid var(--b2);}
+  .col-score{max-height:420px;}
+  .col-center{max-height:460px;}
+  .col-result{flex:1;min-height:400px;}
+}
 
-    label { display: block; font-size: 12.8px; font-weight: 900; color: rgba(11,18,32,.84); margin: 0 0 7px; letter-spacing: -0.1px; }
+/* ── MASCOT ── */
+.msec{display:flex;flex-direction:column;align-items:center;padding:4px 0 16px;}
+.mhalo{position:relative;width:90px;height:90px;display:flex;align-items:center;justify-content:center;}
+.mhalo::before{content:'';position:absolute;inset:-3px;border-radius:28px;border:2px solid transparent;
+  background:linear-gradient(var(--s1),var(--s1)) padding-box,
+             conic-gradient(from 0deg,var(--blue),var(--purple),var(--cyan),var(--blue)) border-box;
+  animation:con 6s linear infinite;}
+@keyframes con{to{filter:hue-rotate(360deg);}}
+.ring{position:absolute;border-radius:50%;border:1px solid;animation:rp 3s ease-out infinite;}
+.ring1{inset:-14px;border-color:rgba(37,99,235,.12);}
+.ring2{inset:-26px;border-color:rgba(124,58,237,.08);animation-delay:.7s;}
+.ring3{inset:-38px;border-color:rgba(8,145,178,.05);animation-delay:1.4s;}
+@keyframes rp{0%{opacity:0;transform:scale(.88);}45%{opacity:1;}100%{opacity:0;transform:scale(1.12);}}
+.mface{width:84px;height:84px;border-radius:22px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-size:2.75em;
+  position:relative;z-index:1;box-shadow:0 8px 28px var(--shadow);
+  animation:flt 3.5s ease-in-out infinite;}
+@keyframes flt{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.mbadge{margin-top:10px;display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b2);
+  border-radius:999px;padding:4px 13px;font-size:0.6875em;font-family:'Space Mono',monospace;color:var(--muted2);}
+.mbdot{width:5px;height:5px;border-radius:50%;animation:glw 2s infinite;}
+.bubble{position:relative;margin-top:12px;max-width:440px;width:100%;
+  background:var(--s1);border:1px solid var(--b2);
+  border-radius:18px;padding:16px 20px;text-align:center;font-size:0.9375em;line-height:1.9;
+  box-shadow:0 4px 18px var(--shadow);}
+.bubble::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:18px 18px 0 0;
+  background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));}
+.hl{color:var(--blue);font-weight:700;}.hl2{color:var(--green);font-weight:700;}.hl3{color:var(--amber);font-weight:700;}
+.bsub{font-size:0.7812em;color:var(--muted2);margin-top:6px;display:block;}
 
-    input[type="text"], textarea {
-      width: 100%; padding: 12px; border: 1px solid var(--border-strong);
-      background: rgba(249,250,251,.95); border-radius: 12px; outline: none;
-      font-size: 14px; font-family: var(--font);
-      transition: border-color .15s, box-shadow .15s, background .15s;
-    }
-    input[type="text"]:hover, textarea:hover { border-color: rgba(15,23,42,.22); }
-    input[type="text"]:focus, textarea:focus { border-color: rgba(37,99,235,.55); background: #fff; box-shadow: var(--focus); }
-    textarea { min-height: 128px; resize: vertical; line-height: 1.75; }
+/* ── CARDS ── */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+.cards.four{grid-template-columns:1fr 1fr;}
+@media(max-width:460px){.cards,.cards.four{grid-template-columns:1fr;}}
+.card{background:var(--s1);border:2px solid var(--card-border);
+  border-radius:16px;padding:18px 16px;cursor:pointer;position:relative;overflow:hidden;
+  transition:border-color .2s,transform .2s,box-shadow .2s;box-shadow:0 2px 8px var(--shadow);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;transition:opacity .2s;}
+.card:hover{border-color:var(--b3);transform:translateY(-2px);box-shadow:0 6px 20px var(--shadow);}
+.card.sel::before{opacity:1;}
+.card.sel{border-color:var(--blue);background:rgba(37,99,235,.05);box-shadow:0 4px 16px rgba(37,99,235,.15);}
+.card.c-pub::before,.card.c-pub.sel::before{background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.card.c-prv::before,.card.c-prv.sel::before{background:linear-gradient(90deg,var(--purple),var(--blue));}
+.card.c-prv.sel{border-color:var(--purple);background:rgba(124,58,237,.05);}
+.card.c-n::before,.card.c-n.sel::before{background:linear-gradient(90deg,var(--green),var(--cyan));}
+.card.c-n.sel{border-color:var(--green);background:rgba(5,150,105,.05);}
+.card.c-sp::before,.card.c-sp.sel::before{background:linear-gradient(90deg,var(--amber),var(--cyan));}
+.card.c-sp.sel{border-color:var(--amber);background:rgba(217,119,6,.05);}
+.card.c-sy::before,.card.c-sy.sel::before{background:linear-gradient(90deg,#f59e0b,var(--green));}
+.card.c-sy.sel{border-color:#d97706;background:rgba(245,158,11,.05);}
+.card.c-sn::before,.card.c-sn.sel::before{background:linear-gradient(90deg,var(--muted),var(--muted2));}
+.card.c-sn.sel{border-color:var(--muted2);background:rgba(90,110,144,.05);}
+.card-ico{font-size:1.75em;margin-bottom:9px;display:block;}
+.card-title{font-size:0.9375em;font-weight:800;letter-spacing:-.2px;margin-bottom:5px;}
+.card-desc{font-size:0.8438em;color:var(--muted2);line-height:1.7;}
+.card-badge{display:inline-flex;align-items:center;margin-top:9px;font-size:0.75em;
+  font-weight:700;padding:3px 10px;border-radius:999px;font-family:'Space Mono',monospace;}
+.cb-b{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);color:var(--blue);}
+.cb-g{background:rgba(5,150,105,.1);border:1px solid rgba(5,150,105,.2);color:var(--green);}
+.cb-a{background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.2);color:var(--amber);}
+.cb-m{background:rgba(90,110,144,.1);border:1px solid rgba(90,110,144,.2);color:var(--muted2);}
 
-    .hint { margin-top: 8px; color: var(--muted); font-size: 12.3px; font-weight: 700; }
-    .hint .danger { color: var(--danger); font-weight: 950; }
+/* ── EXTRA FIELDS ── */
+.xf{max-height:0;overflow:hidden;transition:max-height .32s cubic-bezier(.22,1,.36,1),opacity .22s;opacity:0;}
+.xf.open{max-height:220px;opacity:1;margin-top:10px;}
+.xf-inner{padding:14px;background:var(--s3);border:1px solid var(--b2);border-radius:11px;}
+.xf-inner .fl{font-size:0.8125em;}
 
-    .radio-group { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px 0 0; }
-    .choice {
-      display: inline-flex; align-items: center; gap: 10px; padding: 10px 12px;
-      border: 1px solid var(--border); border-radius: 999px; background: rgba(15,23,42,.03);
-      cursor: pointer; user-select: none;
-      transition: transform .12s var(--ease), border-color .15s, background .15s, box-shadow .15s;
-      font-weight: 850; color: rgba(11,18,32,.84); font-size: 13.5px;
-    }
-    .choice:hover { border-color: rgba(37,99,235,.28); background: rgba(37,99,235,.06); transform: translate3d(0,-1px,0); }
-    .choice.selected { border-color: rgba(37,99,235,.5); background: rgba(37,99,235,.09); color: var(--primary); box-shadow: 0 3px 12px rgba(37,99,235,.12); font-weight: 950; }
-    .choice input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+/* ── FORM ── */
+.scard{background:var(--s1);border:1px solid var(--b2);
+  border-radius:16px;overflow:hidden;margin-top:10px;position:relative;box-shadow:0 2px 10px var(--shadow);}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--blue),var(--cyan));opacity:.6;}
+.sh{padding:16px 18px 0;}
+.st{font-size:0.9375em;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.ss{font-size:0.8125em;color:var(--muted);margin-bottom:13px;}
+.sb{padding:0 18px 18px;}
+.field{margin-bottom:13px;}.field:last-child{margin-bottom:0;}
+.fl{font-size:0.8125em;font-weight:700;color:var(--muted2);letter-spacing:.02em;text-transform:uppercase;
+  margin-bottom:7px;font-family:'Space Mono',monospace;}
+input[type="text"],textarea{width:100%;padding:11px 13px;background:var(--input-bg);border:1.5px solid var(--b2);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:0.875em;outline:none;
+  transition:border-color .2s,box-shadow .2s;}
+input::placeholder,textarea::placeholder{color:var(--muted);}
+input:focus,textarea:focus{border-color:var(--blue);background:var(--s1);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+textarea{min-height:130px;resize:vertical;line-height:1.8;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:480px){.row2{grid-template-columns:1fr;}}
 
-    .toggle-row {
-      display: flex; align-items: center; gap: 12px; margin-top: 14px;
-      cursor: pointer; user-select: none; padding: 12px 12px; border-radius: 12px;
-      border: 1px solid rgba(22,163,74,.26); background: rgba(22,163,74,.06);
-      transition: background .15s, border-color .15s, transform .12s var(--ease);
-    }
-    .toggle-row:hover { background: rgba(22,163,74,.09); border-color: rgba(22,163,74,.36); transform: translate3d(0,-1px,0); }
+/* ── BUTTONS ── */
+.nbtn{width:100%;padding:14px;border:none;border-radius:13px;cursor:pointer;
+  font-family:inherit;font-size:0.9375em;font-weight:800;
+  background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;
+  box-shadow:0 4px 16px rgba(37,99,235,.3);transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;}
+.nbtn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(37,99,235,.4);}
+.gbtn{width:100%;padding:11px;border:1.5px solid var(--b2);border-radius:11px;
+  background:var(--s2);color:var(--muted2);cursor:pointer;font-family:inherit;
+  font-size:0.8438em;font-weight:700;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:9px;}
+.gbtn:hover{border-color:var(--b3);color:var(--text);}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-    .toggle-row-ai {
-      border-color: rgba(99,102,241,.26) !important;
-      background: rgba(99,102,241,.06) !important;
-    }
-    .toggle-row-ai:hover { background: rgba(99,102,241,.10) !important; border-color: rgba(99,102,241,.38) !important; }
+/* ── PROGRESS ── */
+.prog-steps{display:flex;flex-direction:column;gap:9px;padding:2px 0;}
+.ps{display:flex;align-items:center;gap:9px;font-size:0.8125em;font-family:'Space Mono',monospace;color:var(--muted);transition:color .3s;}
+.ps.on{color:var(--blue);}.ps.done{color:var(--green);}
+.ps-ic{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:0.625em;flex-shrink:0;background:var(--s3);border:1px solid var(--b2);transition:all .3s;}
+.ps.on .ps-ic{background:rgba(37,99,235,.12);border-color:var(--blue);color:var(--blue);animation:spin .8s linear infinite;}
+.ps.done .ps-ic{background:rgba(5,150,105,.12);border-color:var(--green);color:var(--green);}
+.pb-wrap{height:4px;background:var(--s3);border-radius:999px;margin-top:10px;overflow:hidden;}
+.pb{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));border-radius:999px;width:0;transition:width .5s ease;}
 
-    .toggle-wrap { position: relative; flex-shrink: 0; }
-    .toggle-wrap input[type="checkbox"] { display: none; }
-    .toggle-track {
-      display: block; width: 42px; height: 24px; background: #cbd5e1;
-      border-radius: 999px; position: relative; transition: background .25s var(--ease);
-    }
-    .toggle-track::after {
-      content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
-      background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.18);
-      transition: transform .28s cubic-bezier(.34,1.56,.64,1);
-    }
-    .toggle-wrap input:checked ~ .toggle-track { background: var(--success); }
-    .toggle-wrap input:checked ~ .toggle-track::after { transform: translateX(18px); }
-    .toggle-wrap-ai input:checked ~ .toggle-track { background: var(--indigo) !important; }
+/* ── SCORING SHOW ── */
+#s-score{background:var(--bg);overflow-y:auto;}
+.score-show{max-width:520px;margin:0 auto;padding:20px 18px 60px;}
+.score-head{text-align:center;margin-bottom:18px;}
+.score-face-big{font-size:3.5em;margin-bottom:8px;}
+.score-lbl{font-size:0.8438em;font-weight:700;color:var(--muted2);font-family:'Space Mono',monospace;}
+.score-grade{font-size:1.25em;font-weight:900;min-height:30px;margin-top:4px;}
+.big-ring-wrap{display:flex;justify-content:center;margin:0 0 20px;}
+.big-ring{position:relative;width:130px;height:130px;}
+.big-ring svg{width:130px;height:130px;transform:rotate(-90deg);}
+.brt{fill:none;stroke:var(--s3);stroke-width:7;}
+.brf{fill:none;stroke-width:7;stroke-linecap:round;stroke-dasharray:345;stroke-dashoffset:345;
+  transition:stroke-dashoffset 1s cubic-bezier(.22,1,.36,1),stroke .5s;}
+.brc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.brn{font-size:2.375em;font-weight:900;font-family:'Space Mono',monospace;color:var(--amber);line-height:1;}
+.brm{font-size:0.6875em;color:var(--muted2);font-family:'Space Mono',monospace;}
+.sc-sec{margin-bottom:13px;}
+.sc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.sc-nm{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;color:var(--muted2);letter-spacing:.04em;text-transform:uppercase;}
+.sc-pts{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:5px;
+  background:var(--s3);border:1px solid var(--b);color:var(--muted);transition:all .4s;}
+.sc-pts.full{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.25);color:var(--green);}
+.sci{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:10px;
+  background:var(--s2);border:1.5px solid var(--b);margin-bottom:6px;
+  opacity:0;transform:translateX(-8px);transition:opacity .3s,transform .3s,background .35s,border-color .35s;}
+.sci:last-child{margin-bottom:0;}
+.sci.vis{opacity:1;transform:none;}
+.sci.pass{background:rgba(5,150,105,.06);border-color:rgba(5,150,105,.2);}
+.sci.fail{background:rgba(220,38,38,.05);border-color:rgba(220,38,38,.18);}
+.sci.bonus{background:rgba(217,119,6,.06);border-color:rgba(217,119,6,.2);}
+.sci.scan{animation:scnf .3s ease;}
+@keyframes scnf{0%,100%{}50%{background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.35);}}
+.sci-ic{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:0.875em;background:var(--s3);border:1px solid var(--b2);transition:all .3s;}
+.sci.pass .sci-ic{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.28);color:var(--green);}
+.sci.fail .sci-ic{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.22);color:var(--red);}
+.sci.bonus .sci-ic{background:rgba(217,119,6,.1);border-color:rgba(217,119,6,.25);color:var(--amber);}
+.sci-body{flex:1;min-width:0;}
+.sci-lbl{font-size:0.8125em;font-weight:700;color:var(--muted2);transition:color .3s;}
+.sci-desc{font-size:0.7188em;color:var(--muted);margin-top:2px;}
+.sci.pass .sci-lbl{color:var(--green);}
+.sci.fail .sci-lbl{color:var(--red);}
+.sci.bonus .sci-lbl{color:var(--amber);}
+.sci-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.sci-pts{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;padding:3px 8px;border-radius:6px;
+  background:var(--s3);border:1px solid var(--b);color:var(--muted);transition:all .3s;}
+.sci.pass .sci-pts{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);}
+.sci.fail .sci-pts{background:rgba(220,38,38,.07);border-color:rgba(220,38,38,.18);color:var(--red);}
+.sci.bonus .sci-pts{background:rgba(217,119,6,.08);border-color:rgba(217,119,6,.2);color:var(--amber);}
+.na-bdg{font-size:0.625em;font-weight:700;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;
+  background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);color:var(--blue);}
 
-    .toggle-label { font-size: 13.5px; font-weight: 900; color: rgba(11,18,32,.86); flex: 1; }
-    .toggle-badge {
-      font-size: 11.5px; font-weight: 800; padding: 4px 9px; border-radius: 6px;
-      background: rgba(22,163,74,.12); color: var(--success);
-      border: 1px solid rgba(22,163,74,.25); letter-spacing: .02em;
-    }
-    .toggle-badge-ai {
-      background: rgba(99,102,241,.12) !important; color: var(--indigo) !important;
-      border-color: rgba(99,102,241,.25) !important;
-    }
+/* ── SCORE PANEL (left col) ── */
+.rp-title{font-size:0.9375em;font-weight:900;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.rescan-btn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;
+  background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);
+  color:var(--blue);font-size:0.75em;font-weight:700;cursor:pointer;font-family:'Space Mono',monospace;}
+.rescan-btn:hover{background:rgba(37,99,235,.16);}
+.mini-ring-wrap{display:flex;align-items:center;gap:12px;
+  background:rgba(217,119,6,.07);
+  border:1.5px solid rgba(217,119,6,.2);border-radius:12px;padding:12px;margin-bottom:10px;}
+.mini-ring{position:relative;width:62px;height:62px;flex-shrink:0;}
+.mini-ring svg{width:62px;height:62px;transform:rotate(-90deg);}
+.mrt{fill:none;stroke:var(--s3);stroke-width:5;}
+.mrf{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:151;stroke-dashoffset:151;
+  transition:stroke-dashoffset .8s cubic-bezier(.22,1,.36,1),stroke .4s;}
+.mrc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.mrn{font-size:1.1875em;font-weight:900;font-family:'Space Mono',monospace;color:var(--amber);line-height:1;}
+.mrm{font-size:0.5625em;color:var(--muted2);font-family:'Space Mono',monospace;}
+.mini-info{flex:1;min-width:0;}
+.mini-gr{font-size:0.8438em;font-weight:800;margin-bottom:3px;}
+.mini-sub{font-size:0.75em;color:var(--muted2);line-height:1.6;}
+.score-block{background:var(--s1);border:1.5px solid var(--b2);border-radius:12px;padding:11px 13px;margin-bottom:8px;box-shadow:0 1px 4px var(--shadow);}
+.sb-title{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;color:var(--muted2);
+  letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.mc-pts{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:5px;
+  background:var(--s3);border:1px solid var(--b);color:var(--muted);transition:all .4s;}
+.mc-pts.full{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.25);color:var(--green);}
+.mci{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;
+  background:var(--s2);border:1.5px solid var(--b);transition:all .35s;margin-bottom:5px;}
+.mci:last-child{margin-bottom:0;}
+.mci.pass{background:rgba(5,150,105,.06);border-color:rgba(5,150,105,.18);}
+.mci.fail{background:rgba(220,38,38,.05);border-color:rgba(220,38,38,.16);}
+.mci.bonus{background:rgba(217,119,6,.06);border-color:rgba(217,119,6,.18);}
+.mci.blink{animation:blinkRow 1.2s ease-in-out 3;}
+@keyframes blinkRow{0%,100%{background:rgba(220,38,38,.05);border-color:rgba(220,38,38,.16);}
+  50%{background:rgba(220,38,38,.18);border-color:var(--red);box-shadow:0 0 14px rgba(220,38,38,.3);}}
+.mci-ic{width:22px;height:22px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:0.75em;background:var(--s3);border:1px solid var(--b2);transition:all .3s;}
+.mci.pass .mci-ic{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.28);color:var(--green);}
+.mci.fail .mci-ic{background:rgba(220,38,38,.09);border-color:rgba(220,38,38,.22);color:var(--red);}
+.mci.bonus .mci-ic{background:rgba(217,119,6,.09);border-color:rgba(217,119,6,.24);color:var(--amber);}
+.mci-body{flex:1;min-width:0;}
+.mci-lbl{font-size:0.8125em;font-weight:600;color:var(--muted2);transition:color .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mci-desc{font-size:0.7188em;color:var(--muted);margin-top:1px;}
+.mci.pass .mci-lbl{color:var(--green);}
+.mci.fail .mci-lbl{color:var(--red);}
+.mci.bonus .mci-lbl{color:var(--amber);}
+.mci-right{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-direction:row-reverse;}
+.mci-pts{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:5px;
+  background:var(--s3);border:1px solid var(--b);color:var(--muted);transition:all .3s;}
+.mci.pass .mci-pts{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);}
+.mci.fail .mci-pts{background:rgba(220,38,38,.07);border-color:rgba(220,38,38,.18);color:var(--red);}
+.mci.bonus .mci-pts{background:rgba(217,119,6,.08);border-color:rgba(217,119,6,.2);color:var(--amber);}
+.mna{font-size:0.6875em;font-weight:700;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;
+  background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);color:var(--blue);white-space:nowrap;}
 
-    .slide-panel {
-      max-height: 0; overflow: hidden;
-      transition: max-height .45s var(--ease2), opacity .35s var(--ease);
-      opacity: 0;
-    }
-    .slide-panel.active { max-height: 650px; opacity: 1; }
-    .slide-inner {
-      margin-top: 14px; padding: 16px; border-radius: 14px;
-      border: 1px dashed rgba(99,102,241,.40); background: rgba(99,102,241,.05);
-    }
+/* ── CENTER COLUMN ── */
+.hint-block{background:var(--s1);border:1.5px solid var(--b2);border-radius:12px;padding:13px 14px;margin-bottom:12px;box-shadow:0 1px 4px var(--shadow);}
+.hint-block.warn-mode{border-color:rgba(220,38,38,.28);background:rgba(220,38,38,.04);}
+.hint-block.ok-mode{border-color:rgba(5,150,105,.28);background:rgba(5,150,105,.04);}
+.hb-title{font-size:0.8125em;font-weight:700;font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;
+  letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;color:var(--muted2);}
+.hb-title.warn{color:var(--red);}
+.hb-title.ok{color:var(--green);}
+.red-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;animation:rdot 1.2s ease-in-out infinite;}
+@keyframes rdot{0%,100%{box-shadow:0 0 3px var(--red);}50%{box-shadow:0 0 10px var(--red);opacity:.5;}}
+.hb-line{font-size:0.8125em;color:var(--muted2);margin-bottom:5px;line-height:1.7;}
+.hb-line:last-child{margin-bottom:0;}
+.warn-txt{color:var(--red);font-weight:700;}
+.ok-txt{color:var(--green);font-weight:700;}
+.detail-block{background:var(--s1);border:1.5px solid var(--b2);border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px var(--shadow);}
+.db-title{font-size:0.75em;font-weight:700;font-family:'Space Mono',monospace;color:var(--blue);
+  letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
+.di{margin-bottom:9px;}.di:last-of-type{margin-bottom:0;}
+.di-l{font-size:0.8125em;font-weight:600;color:var(--muted2);font-family:'Space Mono',monospace;margin-bottom:5px;}
+.di input{width:100%;padding:10px 12px;background:var(--input-bg);border:1.5px solid var(--b2);
+  border-radius:9px;color:var(--text);font-family:inherit;font-size:0.875em;outline:none;transition:border-color .2s,box-shadow .2s;}
+.di input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1);}
+.di input.fail-input{border-color:var(--red);animation:blinkInput 1.3s ease-in-out 3;}
+@keyframes blinkInput{0%,100%{border-color:rgba(220,38,38,.5);}50%{border-color:var(--red);box-shadow:0 0 8px rgba(220,38,38,.3);}}
+.apply-btn{width:100%;padding:12px;border:none;border-radius:10px;cursor:pointer;
+  font-family:inherit;font-size:0.875em;font-weight:700;margin-top:10px;
+  background:linear-gradient(135deg,var(--green),#047857);color:#fff;
+  box-shadow:0 4px 14px rgba(5,150,105,.25);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.apply-btn:hover{transform:translateY(-1px);}
 
-    .guide-box {
-      margin-bottom: 14px; padding: 14px 16px; border-radius: 12px;
-      background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.22);
-      font-size: 13px; line-height: 1.8; color: rgba(11,18,32,.82);
-    }
-    .guide-box strong { color: var(--indigo); font-weight: 950; }
-    .guide-box code {
-      background: rgba(99,102,241,.14); color: var(--indigo);
-      padding: 2px 7px; border-radius: 6px; font-family: monospace; font-size: 12.5px; font-weight: 800;
-    }
+/* ── RESULT ── */
+.res-box{flex:1;background:var(--s2);border:1.5px solid var(--b2);border-radius:12px;
+  padding:16px;font-size:0.875em;line-height:2;color:var(--text);
+  white-space:pre-wrap;font-family:inherit;resize:none;outline:none;cursor:text;min-height:300px;}
+.res-box:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1);}
+.res-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-shrink:0;}
+.res-ct{font-size:0.75em;color:var(--muted);font-family:'Space Mono',monospace;}
+.rb{padding:6px 12px;border-radius:7px;font-size:0.75em;font-weight:600;cursor:pointer;
+  font-family:'Space Mono',monospace;transition:all .2s;background:var(--s2);border:1.5px solid var(--b2);color:var(--muted2);}
+.rb:hover{border-color:var(--b3);color:var(--text);}
+.rb.copy{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.28);color:var(--green);}
+.rb.copy:hover{background:rgba(5,150,105,.18);}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:glw 1.5s infinite;}
 
-    .ai-status {
-      display: none; align-items: center; gap: 8px;
-      margin-top: 10px; padding: 10px 12px; border-radius: 10px;
-      font-size: 12.8px; font-weight: 800;
-    }
-    .ai-status.loading { display: flex; background: rgba(99,102,241,.08); color: var(--indigo); border: 1px solid rgba(99,102,241,.22); }
-    .ai-status.error   { display: flex; background: rgba(220,38,38,.08); color: var(--danger); border: 1px solid rgba(220,38,38,.2); }
-    .ai-status.ok      { display: flex; background: rgba(22,163,74,.08); color: var(--success); border: 1px solid rgba(22,163,74,.22); }
-
-    .special { max-height: 0; overflow: hidden; transition: max-height .4s var(--ease2), opacity .3s var(--ease); opacity: 0; }
-    .special.active { max-height: 220px; opacity: 1; }
-    .special-inner { margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(37,99,235,.40); background: rgba(37,99,235,.06); }
-
-    .btn-row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
-    button {
-      border: none; border-radius: 14px; padding: 14px;
-      font-family: var(--font); font-weight: 950; font-size: 15px; cursor: pointer;
-      transition: transform .12s var(--ease), filter .15s, box-shadow .15s;
-      box-shadow: 0 10px 18px rgba(2,6,23,.10);
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      letter-spacing: -0.2px; position: relative; overflow: hidden; will-change: transform; width: 100%;
-    }
-    button:hover { transform: translate3d(0,-2px,0); box-shadow: 0 16px 30px rgba(2,6,23,.14); }
-    button:active { transform: translate3d(0,0,0); filter: brightness(.97); }
-    button:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
-    button::after {
-      content: ""; position: absolute; width: 8px; height: 8px; border-radius: 999px;
-      background: rgba(255,255,255,.42); transform: translate(-50%,-50%) scale(0);
-      opacity: 0; pointer-events: none;
-    }
-    button.rippling::after { animation: ripple .55s var(--ease) both; }
-    @keyframes ripple {
-      0%   { opacity:0;   transform: translate(var(--rx), var(--ry)) scale(0); }
-      20%  { opacity:.55; }
-      100% { opacity:0;   transform: translate(var(--rx), var(--ry)) scale(24); }
-    }
-    .btn-primary { background: linear-gradient(180deg, var(--primary), var(--primary-600)); color: #fff; }
-    .btn-primary:hover { filter: brightness(1.04); }
-    .btn-success { background: linear-gradient(180deg, var(--success), var(--success-600)); color: #fff; }
-    .btn-success:hover { filter: brightness(1.04); }
-    .btn-ai { background: linear-gradient(180deg, var(--indigo), var(--indigo-600)); color: #fff; }
-    .btn-ai:hover { filter: brightness(1.06); }
-
-    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .result {
-      border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
-      background: #fff; box-shadow: var(--shadow-soft); opacity: 0;
-      animation: cardIn .55s .38s var(--ease2) both;
-    }
-    .result-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(15,18,42,.02);
-    }
-    .result-title { margin: 0; font-size: 13.5px; font-weight: 950; color: rgba(11,18,32,.86); letter-spacing: -0.2px; display: flex; align-items: center; gap: 8px; }
-    .result-dot { width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; transition: background .3s; }
-    .result-dot.active { background: var(--success); box-shadow: 0 0 0 3px rgba(22,163,74,.2); animation: pulse-dot 2s ease infinite; }
-    @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.7); } }
-    .result-meta { font-size: 12px; color: var(--muted); font-weight: 800; font-family: monospace; }
-
-    #resultArea {
-      padding: 16px 16px 18px; white-space: pre-wrap; line-height: 1.85;
-      font-size: 14.5px; color: #0b1220; min-height: 230px; outline: none;
-    }
-    #resultArea[contenteditable="true"]:focus { box-shadow: inset 0 0 0 2px rgba(37,99,235,.18); border-radius: 12px; }
-
-    .char-count { font-size: 11.5px; color: var(--muted); font-weight: 700; text-align: right; margin-top: 6px; font-family: monospace; }
-    .result-actions { padding: 14px; border-top: 1px solid var(--border); background: rgba(15,23,42,.015); }
-
-    .toast {
-      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(8px);
-      background: rgba(11,18,32,.92); color: #fff; padding: 12px 18px; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12); box-shadow: 0 18px 50px rgba(2,6,23,.28);
-      display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none;
-      transition: opacity .22s var(--ease), transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 9999;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .toast .ticon { width: 24px; height: 24px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.12); }
-    .toast .tmsg { font-size: 13px; font-weight: 900; letter-spacing: -0.1px; }
-
-    @media (max-width: 860px){
-      body { padding: 14px; }
-      .content { padding: 18px 16px 22px; }
-      .header { padding: 22px 16px 14px; }
-      .form-row { grid-template-columns: 1fr; }
-    }
-    @media (prefers-reduced-motion: reduce){
-      .bg::before, .bg::after, .section, .choice, .toggle-row, button, .toast {
-        animation: none !important; transition: none !important;
-      }
-      .section, .choice, button { transform: none !important; }
-    }
-  </style>
+/* ── TOAST ── */
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%)translateY(12px);
+  background:var(--s1);border:1.5px solid var(--b3);border-radius:999px;
+  padding:10px 20px;display:flex;align-items:center;gap:8px;font-size:0.8125em;font-weight:600;
+  font-family:'Space Mono',monospace;opacity:0;pointer-events:none;z-index:9999;
+  color:var(--text);box-shadow:0 8px 32px var(--shadow);
+  transition:opacity .22s,transform .32s cubic-bezier(.34,1.56,.64,1);}
+.toast.show{opacity:1;transform:translateX(-50%)translateY(0);}
+</style>
 </head>
-
 <body>
-  <div id="scrollLine"></div>
-  <div class="bg" aria-hidden="true"></div>
-  <div class="noise" aria-hidden="true"></div>
+<div class="bg"><div class="bg-grid"></div></div>
+<svg width="0" height="0" style="position:absolute">
+  <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#2563eb"/><stop offset="50%" stop-color="#0891b2"/><stop offset="100%" stop-color="#10b981"/>
+  </linearGradient></defs>
+</svg>
 
-  <div class="container">
-    <div class="header">
-      <h1 class="title">
-        <span class="title-badge">🏛️</span>
-        국민신문고 민원답변 생성기
-      </h1>
-      <p class="subtitle">민원처리 답변 충실도 평가기준을 고려해, 표준 서식을 생성합니다.</p>
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-av">🤖</div>
+  <div>
+    <div class="hdr-name">MINWON-BOT</div>
+    <div class="hdr-st"><div class="hdr-dot"></div><span id="hSt">온라인</span></div>
+  </div>
+  <div class="hdr-right">
+    <div class="score-pill" id="sPill" style="display:none;">
+      <span style="font-size:0.625em;color:var(--muted2);">충실도</span>
+      <div class="sp-val" id="sVal">-</div>
+      <span style="font-size:0.6875em;color:var(--amber);">점</span>
     </div>
+    <!-- 폰트 크기 조절 -->
+    <div class="font-ctrl">
+      <button class="font-btn" onclick="adjustFont(-1)" title="글씨 작게">A−</button>
+      <button class="font-btn" onclick="adjustFont(1)" title="글씨 크게">A+</button>
+    </div>
+    <!-- 테마 토글 -->
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="테마 전환">☀️</button>
+    <div class="hdr-btn" id="restBtn" style="display:none;" onclick="restart()">↺ 처음으로</div>
+  </div>
+</div>
 
-    <div class="content">
-      <div class="grid">
+<!-- STEP BAR -->
+<div class="step-bar">
+  <div class="si on" id="si0"><div class="si-n">1</div><span>원문</span></div><div class="si-arr">›</div>
+  <div class="si" id="si1"><div class="si-n">2</div><span>공개여부</span></div><div class="si-arr">›</div>
+  <div class="si" id="si2"><div class="si-n">3</div><span>민원유형</span></div><div class="si-arr">›</div>
+  <div class="si" id="si3"><div class="si-n">4</div><span>만족도</span></div><div class="si-arr">›</div>
+  <div class="si" id="si4"><div class="si-n">5</div><span>기본정보</span></div><div class="si-arr">›</div>
+  <div class="si" id="si5"><div class="si-n">6</div><span>분석</span></div><div class="si-arr">›</div>
+  <div class="si" id="si6"><div class="si-n">7</div><span>결과</span></div>
+</div>
 
-        <section class="section">
-          <div class="section-head">
-            <h2 class="section-title"><span class="icon">01</span>기본 및 담당자 정보</h2>
-          </div>
-          <div class="info-grid">
-            <div>
-              <label for="caseNum">민원 신청번호</label>
-              <input type="text" id="caseNum" placeholder="예) 1AA-2504-0000000" />
-            </div>
-            <div>
-              <label for="dept">소속 기관 및 부서</label>
-              <input type="text" id="dept" placeholder="예) 서울특별시교육청 OOO과" />
-            </div>
-            <div>
-              <label for="staffName">담당 주무관 성함</label>
-              <input type="text" id="staffName" placeholder="예) 홍길동" />
-            </div>
-            <div>
-              <label for="phone">전화번호 <span class="hint">(☏ 기호 자동 삽입)</span></label>
-              <input type="text" id="phone" inputmode="tel" placeholder="예) 02-0000-0000" />
-            </div>
-          </div>
-        </section>
+<!-- SCREENS -->
+<div class="screens">
 
-        <section class="section">
-          <div class="section-head">
-            <h2 class="section-title"><span class="icon">02</span>민원 유형 선택</h2>
-            <span class="pill">특수 유형 선택 시 추가 항목 표시</span>
-          </div>
-          <div class="radio-group" role="radiogroup" aria-label="민원 유형">
-            <label class="choice"><input type="radio" name="minwonType" value="normal" checked /> 일반 민원</label>
-            <label class="choice"><input type="radio" name="minwonType" value="transfer" /> 이첩 민원</label>
-            <label class="choice"><input type="radio" name="minwonType" value="avoid" /> 기피신청 민원</label>
-            <label class="choice"><input type="radio" name="minwonType" value="passive" /> 소극행정 신고 민원</label>
-          </div>
-          <div id="transferInput" class="special" aria-hidden="true">
-            <div class="special-inner">
-              <label for="fromOrg">이첩된 최초 기관명</label>
-              <input type="text" id="fromOrg" placeholder="예) 대통령비서실, 규제개혁신문고 등" />
-            </div>
-          </div>
-          <div id="avoidInput" class="special" aria-hidden="true">
-            <div class="special-inner">
-              <div class="form-row" style="margin-bottom:0;">
-                <div>
-                  <label for="avoidDept">기피 대상 부서</label>
-                  <input type="text" id="avoidDept" placeholder="예) OOO과" />
-                </div>
-                <div>
-                  <label for="avoidReason">기피신청 불수용 사유</label>
-                  <input type="text" id="avoidReason" placeholder="예) 업무 연속성 및 전문성 유지 등" />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div id="passiveInput" class="special" aria-hidden="true">
-            <div class="special-inner">
-              <label for="passiveReason">감사부서 미처리 사유(현업부서 답변 사유)</label>
-              <input type="text" id="passiveReason" placeholder="예) 자체 종결 사안으로 분류됨 등" />
-            </div>
-          </div>
-        </section>
+<!-- S0 -->
+<div class="scr show" id="s0">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">🤖</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--green);box-shadow:0 0 5px var(--green);"></div>MINWON-BOT · ONLINE</div>
+      <div class="bubble">안녕하세요! <span class="hl">민원봇</span>이에요. 🤖<br/>민원 원문을 붙여넣고 <span class="hl2">시작</span>해주세요.<span class="bsub">AI 분석 → 충실도 채점 → 서식 완성</span></div>
+    </div>
+    <div class="scard">
+      <div class="sh"><div class="st">📋 민원 원문</div><div class="ss">민원인이 제출한 원문 전체 · 개인정보는 ○○로 대체</div></div>
+      <div class="sb"><div class="field"><textarea id="rawTxt" style="min-height:140px;" placeholder="민원인이 제출한 원문을 그대로 붙여넣어 주세요.&#10;&#10;※ AI 실패 시 빈 초안으로 진행합니다."></textarea></div></div>
+    </div>
+    <button class="nbtn" onclick="goTo(1)">시작하기 →</button>
+  </div>
+</div>
 
-        <section class="section">
-          <div class="section-head">
-            <h2 class="section-title"><span class="icon">03</span>답변 내용 작성</h2>
-          </div>
+<!-- S1 공개/비공개 -->
+<div class="scr" id="s1">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">🤔</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--blue);box-shadow:0 0 5px var(--blue);"></div>설정 중</div>
+      <div class="bubble">이 민원은 <span class="hl3">공개 민원</span>인가요?<span class="bsub">공개/비공개에 따라 신청번호 기재 기준이 달라요</span></div>
+    </div>
+    <div class="cards">
+      <div class="card c-pub" id="cPub" onclick="pick1(true)">
+        <span class="card-ico">🌐</span><div class="card-title">공개 민원</div>
+        <div class="card-desc">공개용 답변은 신청번호를<br/><b>기재하지 않아요</b></div>
+        <div class="card-badge cb-g">번호 미기재 = 만점</div>
+      </div>
+      <div class="card c-prv" id="cPrv" onclick="pick1(false)">
+        <span class="card-ico">🔒</span><div class="card-title">비공개 민원</div>
+        <div class="card-desc">신청번호를 기재해야 해요<br/><b>미기재 시 -10점</b></div>
+        <div class="card-badge cb-b">번호 기재 필요</div>
+      </div>
+    </div>
+    <button class="gbtn" onclick="goTo(0)">← 이전</button>
+  </div>
+</div>
 
-          <label class="toggle-row toggle-row-ai" for="aiToggle">
-            <span class="toggle-wrap toggle-wrap-ai">
-              <input type="checkbox" id="aiToggle" checked />
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label">Gemini로 민원 요지 &amp; 답변 초안 자동 생성</span>
-            <span class="toggle-badge toggle-badge-ai">✨ AI</span>
-          </label>
+<!-- S2 민원유형 -->
+<div class="scr" id="s2">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">🤔</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--blue);box-shadow:0 0 5px var(--blue);"></div>설정 중</div>
+      <div class="bubble">민원 유형을 선택해주세요!<span class="bsub">유형에 따라 2번 문단 문구가 달라져요</span></div>
+    </div>
+    <div class="cards four">
+      <div class="card c-n sel" id="cNorm" onclick="pick2('normal')"><span class="card-ico">📄</span><div class="card-title">일반 민원</div><div class="card-desc">일반 국민신문고</div><div class="card-badge cb-g">기본</div></div>
+      <div class="card c-sp" id="cTr" onclick="pick2('transfer')"><span class="card-ico">🔀</span><div class="card-title">이첩 민원</div><div class="card-desc">타기관 이첩</div><div class="card-badge cb-a">이첩</div></div>
+      <div class="card c-sp" id="cAv" onclick="pick2('avoid')"><span class="card-ico">🚫</span><div class="card-title">기피신청</div><div class="card-desc">부서 기피 포함</div><div class="card-badge cb-a">기피</div></div>
+      <div class="card c-sp" id="cPa" onclick="pick2('passive')"><span class="card-ico">🔍</span><div class="card-title">소극행정</div><div class="card-desc">소극행정 신고</div><div class="card-badge cb-a">소극</div></div>
+    </div>
+    <div class="xf" id="xfTr"><div class="xf-inner"><div class="field"><div class="fl">이첩된 최초 기관명</div><input type="text" id="fromOrg" placeholder="예) 대통령비서실"/></div></div></div>
+    <div class="xf" id="xfAv"><div class="xf-inner"><div class="row2"><div class="field"><div class="fl">기피 대상 부서</div><input type="text" id="avoidDept" placeholder="예) OOO과"/></div><div class="field"><div class="fl">불수용 사유</div><input type="text" id="avoidReason" placeholder="예) 업무 연속성"/></div></div></div></div>
+    <div class="xf" id="xfPa"><div class="xf-inner"><div class="field"><div class="fl">현업부서 답변 사유</div><input type="text" id="passReason" placeholder="예) 자체 종결 사안"/></div></div></div>
+    <button class="nbtn" onclick="goTo(3)">다음 →</button>
+    <button class="gbtn" onclick="goTo(1)">← 이전</button>
+  </div>
+</div>
 
-          <div id="aiPanel" class="slide-panel active" aria-hidden="false">
-            <div class="slide-inner">
+<!-- S3 만족도 -->
+<div class="scr" id="s3">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">🤔</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--blue);box-shadow:0 0 5px var(--blue);"></div>설정 중</div>
+      <div class="bubble">민원처리에 대한<br/><span class="hl3">높은 만족도</span>가 기대되나요?<span class="bsub">단순 절차 안내 또는 칭찬민원 등</span></div>
+    </div>
+    <div class="cards">
+      <div class="card c-sy" id="cSY" onclick="pick3(true)"><span class="card-ico">⭐</span><div class="card-title">네, 기대돼요</div><div class="card-desc">만족도 평가 유도 문구 포함</div><div class="card-badge cb-a">가점 +8점</div></div>
+      <div class="card c-sn" id="cSN" onclick="pick3(false)"><span class="card-ico">➖</span><div class="card-title">아니요</div><div class="card-desc">만족도 유도 문구 미포함</div><div class="card-badge cb-m">미포함</div></div>
+    </div>
+    <button class="gbtn" onclick="goTo(2)">← 이전</button>
+  </div>
+</div>
 
-              <div class="guide-box">
-                <strong>🔐 보안 안내</strong><br/>
-                개인정보/민감정보는 입력하지 마세요.<br/>
-                생성 결과는 초안이며, 최종 제출 전 반드시 검토·수정하세요.
-              </div>
+<!-- S4 기본정보 -->
+<div class="scr" id="s4">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">📝</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--blue);box-shadow:0 0 5px var(--blue);"></div>기본정보 입력</div>
+      <div class="bubble">담당자 정보를 미리 입력하면<br/><span class="hl2">서식에 바로 반영</span>되고 채점 점수도 올라가요!<span class="bsub">나중에 입력하기를 누르면 OOO으로 처리해요</span></div>
+    </div>
+    <div class="scard">
+      <div class="sh"><div class="st">👤 기본 정보</div><div class="ss">모두 선택사항 · 결과 화면에서도 수정 가능해요</div></div>
+      <div class="sb">
+        <div class="row2" style="margin-bottom:13px;">
+          <div class="field" style="margin-bottom:0;"><div class="fl">민원 신청번호</div><input type="text" id="dCase" placeholder="1AA-2504-0000000"/></div>
+          <div class="field" style="margin-bottom:0;"><div class="fl">소속 기관명</div><input type="text" id="dOrg" placeholder="예) 서울특별시교육청"/></div>
+        </div>
+        <div class="row2" style="margin-bottom:13px;">
+          <div class="field" style="margin-bottom:0;"><div class="fl">소속 부서</div><input type="text" id="dDept" placeholder="예) OOO과"/></div>
+          <div class="field" style="margin-bottom:0;"><div class="fl">담당 주무관</div><input type="text" id="dName" placeholder="예) 홍길동"/></div>
+        </div>
+        <div class="field"><div class="fl">전화번호</div><input type="text" id="dPhone" placeholder="02-0000-0000" inputmode="tel"/></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">
+      <button onclick="goTo(5)" style="padding:18px;border:none;border-radius:13px;cursor:pointer;font-family:inherit;font-size:0.9375em;font-weight:900;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8);box-shadow:0 4px 16px rgba(37,99,235,.3);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;"
+        onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">✅ 입력 완료</button>
+      <button onclick="goTo(5)" style="padding:18px;border:none;border-radius:13px;cursor:pointer;font-family:inherit;font-size:0.9375em;font-weight:900;color:#fff;background:linear-gradient(135deg,#7c3aed,#0891b2);box-shadow:0 4px 16px rgba(124,58,237,.28);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;"
+        onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">⏩ 나중에 입력</button>
+    </div>
+    <button class="gbtn" onclick="goTo(3)">← 이전</button>
+  </div>
+</div>
 
-              <div>
-                <label for="rawMinwon">민원인이 제출한 원문 전체 붙여넣기</label>
-                <textarea id="rawMinwon" style="min-height:100px"
-                  placeholder="민원 원문을 그대로 붙여넣어 주세요.&#10;예) 안녕하세요. 저는 ○○구에 거주하는 주민입니다..."></textarea>
-              </div>
-
-              <div id="aiStatus" class="ai-status"></div>
-
-              <div class="btn-row">
-                <button class="btn-ai" id="btnAI" type="button">
-                  <span id="btnAIText">✨ Gemini로 요지 &amp; 초안 생성</span>
-                  <span class="spinner" id="btnAISpin"></span>
-                </button>
-              </div>
-
-            </div>
-          </div>
-
-          <div class="form-row" style="margin-top: 14px;">
-            <div style="grid-column: 1 / -1;">
-              <label for="summary">민원 요지 <span class="hint">("~에 관한 것으로 이해됩니다" 문구 자동 결합)</span></label>
-              <input type="text" id="summary" placeholder="예) 지하 휴게실 전자렌지 위생관리 요청" />
-            </div>
-          </div>
-
-          <div>
-            <label for="content">
-              답변 내용
-              <span class="hint"><span class="danger">※</span> 가독성 점수를 위해 '가. 나. 다.' 등을 직접 매겨 구조화해 주세요.</span>
-            </label>
-            <textarea id="content" placeholder="예시)
-가. 현장 점검 결과...
-나. 조치 예정...
-다. 안내 사항..."></textarea>
-            <div class="char-count" id="charCount">0자</div>
-          </div>
-
-          <label class="toggle-row" for="surveyCheck">
-            <span class="toggle-wrap">
-              <input type="checkbox" id="surveyCheck" checked />
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label">마지막 문구에 '만족도 평가 참여 유도' 문구 포함</span>
-            <span class="toggle-badge">＋ 가점</span>
-          </label>
-
-          <div class="btn-row">
-            <button class="btn-primary" id="btnGenerate" type="button">
-              <span id="btnText">⚙️ 서식에 맞춰 생성하기</span>
-              <span class="spinner" id="btnSpin"></span>
-            </button>
-          </div>
-        </section>
-
-        <section class="result" aria-live="polite">
-          <div class="result-head">
-            <h3 class="result-title">
-              <span class="result-dot" id="resultDot"></span>
-              생성 결과
-            </h3>
-            <div class="result-meta">Ctrl/⌘ + A → 복사</div>
-          </div>
-          <div id="resultArea" contenteditable="true">여기에 표준 규격에 맞춘 민원 답변이 생성됩니다.</div>
-          <div class="result-actions">
-            <button class="btn-success" id="btnCopy" type="button">📋 클립보드에 복사하기</button>
-          </div>
-        </section>
-
+<!-- S5 AI 분석 -->
+<div class="scr" id="s5">
+  <div class="sw">
+    <div class="msec">
+      <div class="mhalo"><div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div><div class="mface">🤔</div></div>
+      <div class="mbadge"><div class="mbdot" style="background:var(--blue);box-shadow:0 0 5px var(--blue);animation:glw .7s infinite;"></div>AI 분석중...</div>
+      <div class="bubble">원문을 꼼꼼히 읽고 있어요...<br/><span class="hl">충실도 기준</span>에 맞게 초안을 작성할게요!</div>
+    </div>
+    <div class="scard">
+      <div class="sh"><div class="st">⚙️ 분석 진행중</div><div class="ss">잠시만 기다려주세요</div></div>
+      <div class="sb">
+        <div class="prog-steps">
+          <div class="ps" id="ps1"><div class="ps-ic">◎</div><span>원문 수신 확인...</span></div>
+          <div class="ps" id="ps2"><div class="ps-ic">◎</div><span>핵심 요지 추출 중...</span></div>
+          <div class="ps" id="ps3"><div class="ps-ic">◎</div><span>충실도 기준 검토 중...</span></div>
+          <div class="ps" id="ps4"><div class="ps-ic">◎</div><span>답변 초안 작성 중...</span></div>
+        </div>
+        <div class="pb-wrap"><div class="pb" id="pBar"></div></div>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
-    <span class="ticon" id="toastIcon">✅</span>
-    <span class="tmsg" id="toastMsg">복사되었습니다.</span>
+<!-- S-SCORE 채점 쇼 -->
+<div class="scr" id="s-score">
+  <div class="score-show">
+    <div class="score-head">
+      <div class="score-face-big" id="sFace">🔍</div>
+      <div class="score-lbl">충실도 실시간 분석중</div>
+      <div class="score-grade" id="sGrade"></div>
+    </div>
+    <div class="big-ring-wrap">
+      <div class="big-ring">
+        <svg viewBox="0 0 130 130"><circle class="brt" cx="65" cy="65" r="55"/><circle class="brf" id="bRing" cx="65" cy="65" r="55"/></svg>
+        <div class="brc"><div class="brn" id="bNum">0</div><div class="brm">/ 100점</div></div>
+      </div>
+    </div>
+    <div class="sc-sec">
+      <div class="sc-hd"><div class="sc-nm">🏁 도입부</div><div class="sc-pts" id="ss1">0/30점</div></div>
+      <div class="sci" id="sc1"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">인사말 포함</div><div class="sci-desc">안녕하십니까? + 소속 안내</div></div><div class="sci-right"><div class="sci-pts" id="sp1">—</div></div></div>
+      <div class="sci" id="sc2"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl" id="sl2">신청번호</div><div class="sci-desc" id="sd2">—</div></div><div class="sci-right"><div class="sci-pts" id="sp2">—</div><div class="na-bdg" id="sb2" style="display:none;">해당없음</div></div></div>
+      <div class="sci" id="sc3"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl" id="sl3">특수유형 안내</div><div class="sci-desc" id="sd3">—</div></div><div class="sci-right"><div class="sci-pts" id="sp3">—</div><div class="na-bdg" id="sb3" style="display:none;">해당없음</div></div></div>
+    </div>
+    <div class="sc-sec">
+      <div class="sc-hd"><div class="sc-nm">📋 전개부</div><div class="sc-pts" id="ss2">0/50점</div></div>
+      <div class="sci" id="sc4"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">민원 요지 작성</div><div class="sci-desc">자동 포함됨</div></div><div class="sci-right"><div class="sci-pts" id="sp4">—</div></div></div>
+      <div class="sci" id="sc5"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">답변 가독성</div><div class="sci-desc">구조화 자동 적용</div></div><div class="sci-right"><div class="sci-pts" id="sp5">—</div></div></div>
+      <div class="sci" id="sc6"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">성실한 답변</div><div class="sci-desc">AI 초안 작성됨</div></div><div class="sci-right"><div class="sci-pts" id="sp6">—</div></div></div>
+    </div>
+    <div class="sc-sec">
+      <div class="sc-hd"><div class="sc-nm">🏷️ 종결부</div><div class="sc-pts" id="ss3">0/20점</div></div>
+      <div class="sci" id="sc7"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">담당자 정보 명시</div><div class="sci-desc">기본정보 기반 최대 +20점</div></div><div class="sci-right"><div class="sci-pts" id="sp7">—</div></div></div>
+    </div>
+    <div class="sc-sec">
+      <div class="sc-hd"><div class="sc-nm">⭐ 가점</div><div class="sc-pts" id="ss4">+0점</div></div>
+      <div class="sci" id="sc8"><div class="sci-ic">⏳</div><div class="sci-body"><div class="sci-lbl">만족도 평가 유도</div><div class="sci-desc" id="sd8">선택 여부</div></div><div class="sci-right"><div class="sci-pts" id="sp8">—</div></div></div>
+    </div>
+  </div>
+</div>
+</div><!-- /screens -->
+
+<!-- 3-COLUMN RESULT -->
+<div class="split3" id="s6">
+  <!-- LEFT: 채점표 -->
+  <div class="col-score">
+    <div class="rp-title">📊 충실도 채점표
+      <button class="rescan-btn" onclick="reScan()"><span id="rIco">↺</span> 재채점</button>
+    </div>
+    <div class="mini-ring-wrap">
+      <div class="mini-ring">
+        <svg viewBox="0 0 62 62"><circle class="mrt" cx="31" cy="31" r="24"/><circle class="mrf" id="mRing" cx="31" cy="31" r="24"/></svg>
+        <div class="mrc"><div class="mrn" id="mNum">0</div><div class="mrm">/ 100</div></div>
+      </div>
+      <div class="mini-info"><div class="mini-gr" id="mGr">-</div><div class="mini-sub" id="mSub"></div></div>
+    </div>
+    <div class="score-block">
+      <div class="sb-title"><span>🏁 도입부</span><span class="mc-pts" id="mp1">0/30</span></div>
+      <div class="mci pass" id="mi1"><div class="mci-ic">✓</div><div class="mci-body"><div class="mci-lbl">인사말 포함</div></div><div class="mci-right"><div class="mci-pts" style="background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);">+10점</div></div></div>
+      <div class="mci" id="mi2"><div class="mci-ic">⏳</div><div class="mci-body"><div class="mci-lbl" id="ml2">신청번호 명시</div></div><div class="mci-right"><div class="mci-pts" id="mc2">—</div><div class="mna" id="mn2" style="display:none;">해당없음</div></div></div>
+      <div class="mci pass" id="mi3"><div class="mci-ic">✓</div><div class="mci-body"><div class="mci-lbl" id="ml3">특수유형(일반)</div></div><div class="mci-right"><div class="mci-pts" id="mc3" style="background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);">+10점</div><div class="mna" id="mn3" style="display:none;">해당없음</div></div></div>
+    </div>
+    <div class="score-block">
+      <div class="sb-title"><span>📋 전개부</span><span class="mc-pts full" id="mp2">50/50</span></div>
+      <div class="mci pass"><div class="mci-ic">✓</div><div class="mci-body"><div class="mci-lbl">민원 요지</div></div><div class="mci-right"><div class="mci-pts" style="background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);">+10점</div></div></div>
+      <div class="mci pass"><div class="mci-ic">✓</div><div class="mci-body"><div class="mci-lbl">답변 가독성</div></div><div class="mci-right"><div class="mci-pts" style="background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);">+20점</div></div></div>
+      <div class="mci pass"><div class="mci-ic">✓</div><div class="mci-body"><div class="mci-lbl">성실한 답변</div></div><div class="mci-right"><div class="mci-pts" style="background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.22);color:var(--green);">+20점</div></div></div>
+    </div>
+    <div class="score-block">
+      <div class="sb-title"><span>🏷️ 종결부</span><span class="mc-pts" id="mp3">0/20</span></div>
+      <div class="mci" id="mi7"><div class="mci-ic">⏳</div><div class="mci-body"><div class="mci-lbl">담당자 정보</div><div class="mci-desc" id="ml7">입력 대기중</div></div><div class="mci-right"><div class="mci-pts" id="mc7">0점</div></div></div>
+    </div>
+    <div class="score-block">
+      <div class="sb-title"><span>⭐ 가점</span><span class="mc-pts" id="mp4">+0</span></div>
+      <div class="mci" id="mi8"><div class="mci-ic">⏳</div><div class="mci-body"><div class="mci-lbl">만족도 유도</div></div><div class="mci-right"><div class="mci-pts" id="mc8">—</div></div></div>
+    </div>
   </div>
 
-  <script>
-    const $ = id => document.getElementById(id);
+  <!-- CENTER: 감점분석 + 세부정보 -->
+  <div class="col-center">
+    <div style="font-size:0.9375em;font-weight:900;color:var(--text);margin-bottom:12px;">⚠️ 감점 분석</div>
+    <div class="hint-block" id="hintBlock">
+      <div class="hb-title" id="hbTitle">분석중...</div>
+      <div id="hintLines"></div>
+    </div>
+    <div style="font-size:0.9375em;font-weight:900;color:var(--text);margin:14px 0 10px;">📝 기본 정보 수정</div>
+    <div class="detail-block">
+      <div class="db-title">담당자 정보 입력</div>
+      <div class="di"><div class="di-l">민원 신청번호</div><input type="text" id="rCase" placeholder="1AA-2504-0000000" oninput="autoRescore()"/></div>
+      <div class="di"><div class="di-l">소속 기관명</div><input type="text" id="rOrg" placeholder="예) 서울특별시교육청" oninput="autoRescore()"/></div>
+      <div class="di"><div class="di-l">소속 부서</div><input type="text" id="rDept" placeholder="예) OOO과" oninput="autoRescore()"/></div>
+      <div class="di"><div class="di-l">담당 주무관</div><input type="text" id="rName" placeholder="예) 홍길동" oninput="autoRescore()"/></div>
+      <div class="di"><div class="di-l">전화번호</div><input type="text" id="rPhone" placeholder="02-0000-0000" inputmode="tel" oninput="autoRescore()"/></div>
+      <button class="apply-btn" onclick="doApply()">✅ 반영 &amp; 재채점</button>
+    </div>
+  </div>
 
-    /**
-     * ✅ 여기에 Cloudflare Worker URL을 넣으면 됨
-     * 예) const WORKER_URL = "https://icy-art-4e14.hdh1231.workers.dev";
-     */
-    const WORKER_URL = "https://icy-art-4e14.hdh1231.workers.dev"; // ← 나중에 여기만 교체
-    const AI_ENDPOINT = WORKER_URL.replace(/\/+$/,'') + "/api/generate";
+  <!-- RIGHT: 서식 -->
+  <div class="col-result">
+    <div style="font-size:0.9375em;font-weight:900;color:var(--text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0;">
+      <span style="display:flex;align-items:center;gap:7px;"><div class="live-dot" id="liveDot" style="display:none;"></div>📋 민원답변 서식</span>
+      <div style="display:flex;gap:6px;">
+        <button class="rb" onclick="doReGen()">↺ 재생성</button>
+        <button class="rb copy" onclick="doCopy()">📋 복사</button>
+      </div>
+    </div>
+    <div style="font-size:0.75em;color:var(--muted2);margin-bottom:8px;flex-shrink:0;font-family:'Space Mono',monospace;">✏️ 직접 클릭해서 수정 가능</div>
+    <textarea class="res-box" id="resBox" oninput="onEdit()" spellcheck="false" placeholder="서식이 여기에 생성됩니다..."></textarea>
+    <div class="res-foot"><span class="res-ct" id="resCt">0자</span></div>
+  </div>
+</div>
 
-    /* ── 스크롤 프로그레스 ── */
-    window.addEventListener('scroll', () => {
-      const s = document.documentElement;
-      $('scrollLine').style.width = (s.scrollTop / (s.scrollHeight - s.clientHeight) * 100) + '%';
-    });
+<div class="toast" id="toast"><span id="tIco">✅</span> <span id="tMsg">완료</span></div>
 
-    /* ── 글자 수 ── */
-    $('content').addEventListener('input', () => {
-      $('charCount').textContent = $('content').value.length + '자';
-    });
+<script>
+const $=id=>document.getElementById(id);
+const WORKER='https://icy-art-4e14.hdh1231.workers.dev';
+const AI_EP=WORKER+'/api/generate';
 
-    /* ── Radio chip ── */
-    function updateChips() {
-      document.querySelectorAll('.choice').forEach(label => {
-        label.classList.toggle('selected', label.querySelector('input[type="radio"]').checked);
-      });
-    }
-    document.querySelectorAll('input[name="minwonType"]').forEach(r =>
-      r.addEventListener('change', () => { updateChips(); toggleSpecial(); }));
-    updateChips();
+let isPublic=null,mType='normal',wSurvey=null;
+let aiSum='',aiDraft='';let curResult='';let curScr='s0';let inSplit=false;
 
-    function getSelectedType() {
-      return document.querySelector('input[name="minwonType"]:checked')?.value || "normal";
-    }
-    function toggleSpecial() {
-      const type = getSelectedType();
-      [['transfer','transferInput'],['avoid','avoidInput'],['passive','passiveInput']].forEach(([k,id]) => {
-        const el = $(id), open = type === k;
-        el.classList.toggle('active', open);
-        el.setAttribute('aria-hidden', String(!open));
-      });
-    }
-    toggleSpecial();
+/* ── 테마 토글 ── */
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  $('themeBtn').textContent=isDark?'☀️':'🌙';
+  localStorage.setItem('mb-theme',isDark?'light':'dark');
+}
+(function initTheme(){
+  const saved=localStorage.getItem('mb-theme')||'light';
+  document.documentElement.setAttribute('data-theme',saved);
+  $('themeBtn').textContent=saved==='dark'?'🌙':'☀️';
+})();
 
-    /* ── AI 토글 → 슬라이드 패널 ── */
-    $('aiToggle').addEventListener('change', () => {
-      const open = $('aiToggle').checked;
-      $('aiPanel').classList.toggle('active', open);
-      $('aiPanel').setAttribute('aria-hidden', String(!open));
-    });
+/* ── 폰트 크기 ── */
+let curFont=parseInt(localStorage.getItem('mb-font')||'16');
+document.documentElement.style.fontSize=curFont+'px';
+function adjustFont(dir){
+  curFont=Math.min(24,Math.max(12,curFont+dir));
+  document.documentElement.style.fontSize=curFont+'px';
+  localStorage.setItem('mb-font',curFont);
+  toast('글씨 크기 '+curFont+'px',dir>0?'🔠':'🔡');
+}
 
-    /* ── AI 상태 표시 ── */
-    function setAIStatus(msg, type) {
-      const el = $('aiStatus');
-      el.className = 'ai-status ' + type;
-      el.textContent = ({ loading:'⏳', error:'❌', ok:'✅' }[type]) + ' ' + msg;
-    }
+/* ── 한글 조사 ── */
+function josa(word,type='은는'){
+  if(!word)return type==='은는'?'은':'이';
+  const code=word[word.length-1].charCodeAt(0);
+  if(code<0xAC00||code>0xD7A3)return type==='은는'?'은':'이';
+  const jong=(code-0xAC00)%28;
+  if(type==='은는')return jong>0?'은':'는';
+  return jong>0?'을':'를';
+}
 
-    /* ── Ripple ── */
-    function ripple(btn, e) {
-      const rect = btn.getBoundingClientRect();
-      btn.style.setProperty('--rx', ((e?.clientX ?? rect.left + rect.width/2) - rect.left) + 'px');
-      btn.style.setProperty('--ry', ((e?.clientY ?? rect.top + rect.height/2) - rect.top) + 'px');
-      btn.classList.remove('rippling'); void btn.offsetWidth; btn.classList.add('rippling');
-      setTimeout(() => btn.classList.remove('rippling'), 650);
-    }
+/* ── TOAST ── */
+let tT;
+function toast(msg,ico='✅'){$('tIco').textContent=ico;$('tMsg').textContent=msg;
+  $('toast').classList.add('show');clearTimeout(tT);tT=setTimeout(()=>$('toast').classList.remove('show'),2700);}
 
-    /* ── Toast ── */
-    let toastTimer;
-    function showToast(msg, icon = '✅') {
-      $('toastIcon').textContent = icon; $('toastMsg').textContent = msg;
-      $('toast').classList.add('show'); clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2400);
-    }
+/* ── STEP BAR ── */
+function setStep(n){for(let i=0;i<7;i++){const e=$('si'+i);e.classList.remove('on','done');if(i<n)e.classList.add('done');if(i===n)e.classList.add('on');}}
 
-    /* ── 전화번호 정규화 ── */
-    function normalizePhone(raw) { return String(raw||'').trim().replace(/^☏\s*/g,''); }
+/* ── TRANSITIONS ── */
+function trans(fromId,toId,stepN){
+  const f=$(fromId),t=$(toId);if(!f||!t)return;
+  f.classList.remove('show');f.classList.add('out');
+  setTimeout(()=>{f.classList.remove('out');t.classList.add('show');if(t.scrollTop!==undefined)t.scrollTop=0;curScr=toId;if(stepN!==undefined)setStep(stepN);},300);
+}
+function goTo(n){
+  if(n===1&&!$('rawTxt').value.trim()){toast('원문을 먼저 입력해주세요','⚠️');return;}
+  if(n===2&&isPublic===null){toast('공개/비공개를 선택해주세요','⚠️');return;}
+  if(n===4&&wSurvey===null){toast('만족도 여부를 선택해주세요','⚠️');return;}
+  if(n===5){startAnalysis();return;}
+  const ids=['s0','s1','s2','s3','s4','s5'];
+  if(ids[n])trans(curScr,ids[n],n);
+}
+function showScore(){trans(curScr,'s-score',6);}
+function showSplit(){
+  $('s-score').classList.remove('show');$('s-score').classList.add('out');
+  setTimeout(()=>{$('s-score').classList.remove('out');$('s6').classList.add('show');inSplit=true;curScr='s6';},300);
+}
 
-    /* ─────────────────────────────────────────────
-       ✅ 생성 결과를 "새로고침"처럼 매번 리셋 + 재생성
-       ───────────────────────────────────────────── */
-    function resetResultUI({ clearArea=true, resetDot=true } = {}) {
-      if (resetDot) $('resultDot').classList.remove('active');
-      if (clearArea) $('resultArea').textContent = '';
-    }
+/* ── PICKS ── */
+function pick1(v){
+  isPublic=v;
+  $('cPub').classList.toggle('sel',v);$('cPrv').classList.toggle('sel',!v);
+  const lbl2=v?'신청번호 미기재 (공개용)':'민원 신청번호 명시';
+  const desc2=v?'공개용 · 기재 안함 = 감점없음':'비공개 · 기재 필요';
+  $('sl2').textContent=lbl2;$('sd2').textContent=desc2;
+  $('ml2').textContent=v?'신청번호(공개·기재X)':'신청번호 명시';
+  setTimeout(()=>goTo(2),300);
+}
+function pick2(t){
+  mType=t;
+  [{id:'cNorm',k:'normal'},{id:'cTr',k:'transfer'},{id:'cAv',k:'avoid'},{id:'cPa',k:'passive'}]
+    .forEach(o=>$(o.id).classList.toggle('sel',o.k===t));
+  $('xfTr').classList.toggle('open',t==='transfer');
+  $('xfAv').classList.toggle('open',t==='avoid');
+  $('xfPa').classList.toggle('open',t==='passive');
+  const isNA=t==='normal';
+  $('sl3').textContent=isNA?'특수유형 (일반민원)':'특수유형 안내';
+  $('sd3').textContent=isNA?'일반 민원 · 해당없음':`${t==='transfer'?'이첩':t==='avoid'?'기피신청':'소극행정'} 문구 자동포함`;
+  $('ml3').textContent=isNA?'특수유형(일반)':'특수유형 안내';
+  if(t==='normal')setTimeout(()=>goTo(3),300);
+}
+function pick3(v){
+  wSurvey=v;
+  $('cSY').classList.toggle('sel',v);$('cSN').classList.toggle('sel',!v);
+  setTimeout(()=>trans(curScr,'s4',4),300);
+}
 
-    /* ─────────────────────────────────────────────
-       ✅ Gemini(Worker)로 요지/초안 생성
-       성공하면: summary/content 채움 → 자동으로 서식 생성까지 실행
-       ───────────────────────────────────────────── */
-    $('btnAI').addEventListener('click', async () => {
-      const rawText = $('rawMinwon').value.trim();
-      const dept    = $('dept').value.trim() || '담당부서';
+/* ── ANALYSIS ── */
+function startAnalysis(){
+  ['Case','Org','Dept','Name','Phone'].forEach(k=>{const s=$('d'+k),r=$('r'+k);if(s&&r)r.value=s.value;});
+  trans(curScr,'s5',5);$('hSt').textContent='분석중...';
+  runAnalysis();
+}
+async function runAnalysis(){
+  const raw=$('rawTxt').value.trim()||'';
+  const pp=runProg();
+  try{
+    if(!raw)throw new Error('no raw');
+    const res=await fetch(AI_EP,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:raw,dept:'담당부서',mode:'both'})});
+    if(!res.ok)throw new Error('서버오류 '+res.status);
+    const d=await res.json();if(d.error)throw new Error(d.error);
+    await pp;aiSum=d.summary||'';aiDraft=d.draft||'';$('hSt').textContent='분석완료';
+  }catch(e){
+    await pp.catch(()=>{});aiSum='';aiDraft='';$('hSt').textContent='직접입력';toast('AI 실패 → 빈 초안으로 진행','⚠️');
+  }
+  showScore();await delay(200);await runScoreShow();
+}
+async function runProg(){
+  const ids=['ps1','ps2','ps3','ps4'];
+  for(let i=0;i<4;i++){
+    ids.forEach((id,j)=>{const e=$(id);if(!e)return;e.classList.remove('on','done');if(j<i)e.classList.add('done');if(j===i)e.classList.add('on');});
+    const pb=$('pBar');if(pb)pb.style.width=((i+1)/4*100)+'%';
+    await delay(420+Math.random()*280);
+  }
+  ids.forEach(id=>{const e=$(id);if(e){e.classList.remove('on');e.classList.add('done');}});
+  const pb=$('pBar');if(pb)pb.style.width='100%';
+}
 
-      if (!rawText) { setAIStatus('민원 원문을 먼저 붙여넣어 주세요.', 'error'); return; }
-      if (!WORKER_URL || WORKER_URL.includes("YOUR-WORKER-URL-HERE")) {
-        setAIStatus('먼저 WORKER_URL을 실제 Worker 주소로 바꿔야 합니다.', 'error');
-        return;
-      }
+/* ── SCORE SHOW ── */
+async function runScoreShow(){
+  $('sFace').textContent='🔍';$('sGrade').textContent='';
+  $('bNum').textContent='0';$('bRing').style.strokeDashoffset='345';$('bRing').style.stroke='url(#sg)';
+  for(let i=1;i<=8;i++){const e=$('sc'+i);if(!e)continue;
+    e.classList.remove('pass','fail','bonus','vis','scan');e.querySelector('.sci-ic').textContent='⏳';$('sp'+i).textContent='—';}
+  ['ss1','ss2','ss3','ss4'].forEach(id=>{const e=$(id);e.textContent='...';e.classList.remove('full');});
+  ['sb2','sb3'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
+  const sc=calcScore();let running=0;
+  async function rev(idx,pass,pts,na,bonus,lbl,desc,showNa){
+    const e=$('sc'+idx);if(!e)return;
+    e.classList.add('vis');e.classList.add('scan');await delay(180);e.classList.remove('scan');
+    const lb=e.querySelector('.sci-lbl');if(lb&&lbl)lb.textContent=lbl;
+    const db=e.querySelector('.sci-desc');if(db&&desc)db.textContent=desc;
+    const ic=e.querySelector('.sci-ic');const naEl=$('sb'+idx);
+    if(na){e.classList.add('pass');ic.textContent='✓';$('sp'+idx).textContent='+'+pts+'점';if(naEl&&showNa)naEl.style.display='flex';}
+    else if(bonus){e.classList.add('bonus');ic.textContent='⭐';$('sp'+idx).textContent='+'+pts+'점';}
+    else if(pass){e.classList.add('pass');ic.textContent='✓';$('sp'+idx).textContent='+'+pts+'점';}
+    else{e.classList.add('fail');ic.textContent='✕';$('sp'+idx).textContent='0점';}
+    if(pass||na)running+=pts;animBig(running);await delay(80);
+  }
+  $('sGrade').textContent='도입부 검토 중...';
+  await rev(1,true,10,false,false,'인사말 포함','안녕하십니까? + 소속 안내');
+  await rev(2,sc.case2.pass,10,sc.case2.na,false,
+    sc.case2.na?'신청번호 미기재 (공개용)':'민원 신청번호 명시',
+    sc.case2.na?'공개용 · 기재 안함 = 감점없음':sc.case2.pass?'번호 확인됨':'⚠️ 미입력 — 감점',true);
+  await rev(3,true,10,mType==='normal',false,
+    mType==='normal'?'특수유형 (일반민원)':'특수유형 안내',
+    mType==='normal'?'일반 민원 · 해당없음':'문구 자동 포함됨',true);
+  $('ss1').textContent=sc.s1+'/30점';$('ss1').classList.toggle('full',sc.s1===30);await delay(80);
+  $('sGrade').textContent='전개부 검토 중...';
+  await rev(4,true,10,false,false,'민원 요지 작성','자동 포함됨');
+  await rev(5,true,20,false,false,'답변 가독성','구조화 자동 적용');
+  await rev(6,true,20,false,false,'성실한 답변','AI 초안 작성됨');
+  $('ss2').textContent='50/50점';$('ss2').classList.add('full');await delay(80);
+  $('sGrade').textContent='종결부 검토 중...';
+  await rev(7,sc.contact.pass,sc.contact.pts,false,false,'담당자 정보 명시',
+    sc.contact.pass?sc.contact.label:'⚠️ 기본정보 입력 시 최대 +20점');
+  $('ss3').textContent=sc.s3+'/20점';$('ss3').classList.toggle('full',sc.s3===20);await delay(80);
+  $('sGrade').textContent='가점 확인 중...';
+  await rev(8,wSurvey,sc.bonus,false,wSurvey,'만족도 평가 유도',wSurvey?'포함 선택됨 (+'+sc.bonus+'점)':'미선택');
+  $('ss4').textContent=sc.bonus>0?'+'+sc.bonus+'점':'0점';await delay(150);
+  const t=sc.total;
+  const g=t>=100?'🏆 만점!':t>=90?'🏆 최우수':t>=80?'🥇 우수':t>=65?'🥈 양호':'🔧 보완 권장';
+  $('sGrade').textContent=g+' · 총 '+t+'점';
+  $('sFace').textContent=t>=95?'🤩':t>=80?'😊':'😅';
+  $('sPill').style.display='flex';$('sVal').textContent=t;$('hSt').textContent='채점완료';
+  await delay(700);
+  const tpl=buildTpl();curResult=tpl;showSplit();$('restBtn').style.display='flex';
+  syncMini(sc);updateHint(sc);
+  await delay(300);
+  $('liveDot').style.display='inline-block';$('hSt').textContent='서식 생성중...';
+  await typeIn($('resBox'),tpl);$('liveDot').style.display='none';$('hSt').textContent='완료';
+  blinkFails(sc);
+}
+function animBig(v){
+  const mx=345;$('bRing').style.strokeDashoffset=mx-(mx*(v/100));
+  $('bRing').style.stroke=v>=80?'var(--green)':v>=60?'url(#sg)':'var(--amber)';
+  cntUp('bNum',parseInt($('bNum').textContent)||0,v,400);
+}
 
-      $('btnAIText').style.display = 'none';
-      $('btnAISpin').style.display = 'inline-block';
-      $('btnAI').disabled = true;
-      setAIStatus('AI가 요지/초안을 작성 중입니다...', 'loading');
+/* ── CALC SCORE ── */
+function calcScore(){
+  const caseV=($('rCase')?.value||'').trim();
+  const deptV=($('rDept')?.value||'').trim();const nameV=($('rName')?.value||'').trim();const phoneV=($('rPhone')?.value||'').trim();
+  const case2na=!!isPublic;const case2pass=case2na?true:caseV.length>0;
+  const rc=[deptV.length>0,nameV.length>0,phoneV.length>0].filter(Boolean).length;
+  const cPts=rc>=3?20:rc===2?14:rc===1?8:0;
+  const cLabel=rc>=3?'3가지 안내 (+20점)':rc===2?'2가지 안내 (+14점)':rc===1?'1가지 안내 (+8점)':'입력 후 최대 +20점';
+  const bonus=wSurvey?8:0;const s1=10+(case2pass?10:0)+10;const s2=50;const s3=cPts;
+  return{case2:{pass:case2pass,na:case2na},contact:{pass:cPts>0,pts:cPts,label:cLabel},s1,s2,s3,bonus,total:Math.min(100,s1+s2+s3+bonus)};
+}
 
-      try {
-        const res  = await fetch(AI_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: rawText,
-            dept,
-            mode: "both"
-          })
-        });
+/* ── BUILD TEMPLATE ── */
+function buildTpl(){
+  const caseNum=($('rCase')?.value||'').trim()||'1AA-0000-0000000';
+  const org=($('rOrg')?.value||'').trim();const dept=($('rDept')?.value||'').trim()||'OOO과';
+  const name=($('rName')?.value||'').trim()||'OOO 주무관';const phone=($('rPhone')?.value||'').trim()||'02-0000-0000';
+  const summary=aiSum||'OOO';const orgDept=org?`${org} ${dept}`:dept;
+  const orgName=org||'우리 기관';const orgEunNeun=josa(orgName,'은는');
+  let p2='';
+  if(mType==='normal')p2=`2. 귀하께서 국민신문고를 통해 신청하신 민원(${caseNum})에 대하여 다음과 같이 답변드립니다.`;
+  else if(mType==='transfer'){const f=($('fromOrg')?.value||'').trim()||'대통령비서실';p2=`2. 귀하께서 ${f}에 제출하여 이첩된 민원(${caseNum})에 대한 검토 결과를 다음과 같이 알려드립니다.`;}
+  else if(mType==='avoid'){const ad=($('avoidDept')?.value||'').trim()||'해당 부서';const ar=($('avoidReason')?.value||'').trim()||'업무 연속성 및 전문성 유지 등';p2=`2. 귀하께서 민원을 제기하실 때 ${ad}를 기피신청하셨으나, ${ar} 등을 고려할 때 부득이 ${ad}에서 답변드릴 수밖에 없음을 양해하여 주시기 바랍니다.`;}
+  else if(mType==='passive'){const pr=($('passReason')?.value||'').trim()||'규정상의 절차';p2=`2. 귀하의 소극행정 신고민원에 대하여 ${pr} 등의 사유로 부득이 감사부서가 아닌 ${orgDept}에서 답변드리는 것이 적절하다고 판단하였음을 양해하여 주시기 바랍니다.`;}
+  const body=aiDraft||'가. \n나. ';
+  let closing=`5. 귀하의 문의에 대하여 만족스러운 답변이 되었기를 바라며, 추가 설명이 필요한 경우 ${orgDept} ${name}(☏${phone})에게 연락주시면 친절히 안내해 드리겠습니다.`;
+  if(wSurvey)closing+=` 아울러 ${orgName}${orgEunNeun} 민원서비스 품질 향상을 위해 노력하고 있습니다. 답변 내용에 만족하셨다면 아래 만족도 평가에 참여해 주시기 바랍니다.`;
+  closing+=` 감사합니다.`;
+  return `제목 : 민원(${caseNum}) 처리결과 안내\n\n1. 안녕하십니까? ${orgDept}에 근무하는 ${name}입니다. 먼저 민원행정에 관심을 가져주신 데에 깊은 감사의 말씀을 드립니다.\n\n${p2}\n\n3. 귀하의 민원 내용은 "${summary}"에 관한 것으로 이해(또는 판단)됩니다.\n\n4. 귀하의 문의 사항에 대해 검토한 의견은 다음과 같습니다.\n${body}\n\n${closing}`;
+}
 
-        if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          throw new Error(`서버 오류 (${res.status}) ${t}`.slice(0, 200));
-        }
+/* ── MINI SYNC ── */
+function syncMini(sc){
+  const m2=$('mi2');m2.classList.remove('pass','fail');
+  if(sc.case2.na){m2.classList.add('pass');m2.querySelector('.mci-ic').textContent='✓';$('mc2').textContent='+10점';$('ml2').textContent='신청번호(공개·기재X)';$('mn2').style.display='flex';}
+  else if(sc.case2.pass){m2.classList.add('pass');m2.querySelector('.mci-ic').textContent='✓';$('mc2').textContent='+10점';$('ml2').textContent='신청번호 명시';$('mn2').style.display='none';}
+  else{m2.classList.add('fail');m2.querySelector('.mci-ic').textContent='✕';$('mc2').textContent='0점';$('ml2').textContent='신청번호 미입력';$('mn2').style.display='none';}
+  $('mp1').textContent=sc.s1+'/30';$('mp1').classList.toggle('full',sc.s1===30);
+  const typeNA=mType==='normal';
+  $('mi3').querySelector('.mci-ic').textContent='✓';$('mc3').textContent='+10점';
+  $('ml3').textContent=typeNA?'특수유형(일반)':'특수유형 안내';$('mn3').style.display=typeNA?'flex':'none';
+  const m7=$('mi7');m7.classList.remove('pass','fail');
+  if(sc.contact.pass){m7.classList.add('pass');m7.querySelector('.mci-ic').textContent='✓';}
+  else{m7.classList.add('fail');m7.querySelector('.mci-ic').textContent='✕';}
+  $('mc7').textContent=sc.contact.pass?'+'+sc.contact.pts+'점':'0점';$('ml7').textContent=sc.contact.label;
+  $('mp3').textContent=sc.s3+'/20';$('mp3').classList.toggle('full',sc.s3===20);
+  const m8=$('mi8');m8.classList.remove('pass','fail','bonus');
+  if(wSurvey){m8.classList.add('bonus');m8.querySelector('.mci-ic').textContent='⭐';}
+  else{m8.classList.add('fail');m8.querySelector('.mci-ic').textContent='✕';}
+  $('mc8').textContent=wSurvey?'+'+sc.bonus+'점':'0점';$('mp4').textContent=sc.bonus>0?'+'+sc.bonus:'0';
+  const t=sc.total;const mx=151;
+  $('mRing').style.strokeDashoffset=mx-(mx*(t/100));
+  $('mRing').style.stroke=t>=80?'var(--green)':t>=60?'url(#sg)':'var(--amber)';
+  cntUp('mNum',parseInt($('mNum').textContent)||0,t,400);
+  const g=t>=100?'🏆 만점!':t>=90?'🏆 최우수':t>=80?'🥇 우수':t>=65?'🥈 양호':'🔧 보완';
+  $('mGr').textContent=g+' · '+t+'점';$('sPill').style.display='flex';$('sVal').textContent=t;
+}
 
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
+function updateHint(sc){
+  const hints=[];
+  if(!sc.case2.na&&!sc.case2.pass)hints.push('<div class="hb-line"><span class="warn-txt">⚠ 민원번호 미입력</span> — -10점 감점</div>');
+  if(!sc.contact.pass)hints.push('<div class="hb-line"><span class="warn-txt">⚠ 담당자 정보 미입력</span> — 현재 +'+sc.contact.pts+'점 / 최대 +20점</div>');
+  const hb=$('hintBlock'),ht=$('hbTitle');
+  if(hints.length){hb.className='hint-block warn-mode';ht.className='hb-title warn';ht.innerHTML='<div class="red-dot"></div>감점 항목 발견';$('hintLines').innerHTML=hints.join('');}
+  else{hb.className='hint-block ok-mode';ht.className='hb-title ok';ht.innerHTML='✅ 감점 없음';$('hintLines').innerHTML='<div class="hb-line"><span class="ok-txt">모든 항목 충족!</span></div>';}
+  const ms=[];
+  if(!sc.case2.na&&!sc.case2.pass)ms.push('번호 입력 필요');
+  if(!sc.contact.pass)ms.push('담당자 입력 시 만점');
+  $('mSub').textContent=ms.length?'💡 '+ms.join(' · '):'✅ 충족!';
+}
 
-        if (data.summary) $('summary').value = data.summary;
-        if (data.draft)   $('content').value = data.draft;
+function blinkFails(sc){
+  if(!sc.case2.na&&!sc.case2.pass){
+    $('mi2').classList.add('blink');const inp=$('rCase');
+    if(inp){inp.classList.add('fail-input');setTimeout(()=>inp.classList.remove('fail-input'),4000);}
+    setTimeout(()=>$('mi2').classList.remove('blink'),4000);
+  }
+  if(!sc.contact.pass){
+    $('mi7').classList.add('blink');
+    [$('rOrg'),$('rDept'),$('rName'),$('rPhone')].forEach(el=>{if(el){el.classList.add('fail-input');setTimeout(()=>el.classList.remove('fail-input'),4000);}});
+    setTimeout(()=>$('mi7').classList.remove('blink'),4000);
+  }
+}
 
-        $('charCount').textContent = $('content').value.length + '자';
+/* ── AUTO RESCORE ── */
+let debT=null;
+function autoRescore(){
+  clearTimeout(debT);
+  debT=setTimeout(()=>{
+    const sc=calcScore();syncMini(sc);updateHint(sc);
+    const tpl=buildTpl();curResult=tpl;
+    const box=$('resBox');if(box){box.value=tpl;$('resCt').textContent=tpl.length+'자';}
+    const sv=$('sVal');if(sv)sv.textContent=sc.total;
+  },200);
+}
+function doApply(){
+  const sc=calcScore();const tpl=buildTpl();curResult=tpl;
+  const box=$('resBox');if(box){box.value=tpl;$('resCt').textContent=tpl.length+'자';}
+  syncMini(sc);updateHint(sc);const sv=$('sVal');if(sv)sv.textContent=sc.total;
+  toast('반영 & 재채점 완료! '+sc.total+'점 ✅','✅');blinkFails(sc);
+}
 
-        // ✅ 여기서 바로 "서식 생성하기" 자동 실행 (밑 결과 새로고침)
-        setAIStatus('자동 생성 완료! (서식 생성까지 자동으로 진행합니다)', 'ok');
-        showToast('AI 초안 생성 → 서식 자동 생성 ✨', '✨');
-
-        await generate({ clearArea:true, resetDot:true, scrollToResult:true });
-
-      } catch (err) {
-        setAIStatus('AI 호출 실패: ' + err.message, 'error');
-        showToast('AI 호출 실패', '❌');
-      } finally {
-        $('btnAIText').style.display = 'inline';
-        $('btnAISpin').style.display = 'none';
-        $('btnAI').disabled = false;
-      }
-    });
-
-    /* ── 최종 서식 생성 ──
-       - 수동으로 눌러도 "밑 결과 새로고침" 되게
-       - 옵션: clearArea/resetDot/scrollToResult
-    ───────────────────────────────────────────── */
-    async function generate(opts = {}) {
-      const {
-        clearArea = true,
-        resetDot = true,
-        scrollToResult = false
-      } = opts;
-
-      const btn = $('btnGenerate');
-      $('btnText').style.display = 'none';
-      $('btnSpin').style.display = 'inline-block';
-      btn.disabled = true;
-
-      // ✅ 결과 영역을 "새로고침"처럼 리셋
-      resetResultUI({ clearArea, resetDot });
-
-      // 아주 짧게 UX 딜레이
-      await new Promise(r => setTimeout(r, 260));
-
-      const caseNum = $('caseNum').value.trim()  || '1AA-0000-0000000';
-      const dept    = $('dept').value.trim()      || 'OOO과';
-      const name    = $('staffName').value.trim() || 'OOO';
-      const phone   = normalizePhone($('phone').value) || '02-0000-0000';
-      const summary = $('summary').value.trim()   || 'OOO';
-      const type    = getSelectedType();
-
-      let paragraph2 = '';
-      if (type === 'normal') {
-        paragraph2 = `2. 귀하께서 국민신문고를 통해 신청하신 민원(신청번호: ${caseNum})에 대하여 다음과 같이 답변드립니다.`;
-      } else if (type === 'transfer') {
-        const f = $('fromOrg').value.trim() || '대통령비서실';
-        paragraph2 = `2. 귀하께서 ${f}에 제출하여 우리 교육청으로 이첩된 민원(${caseNum})에 대한 검토 결과를 다음과 같이 알려드립니다.`;
-      } else if (type === 'avoid') {
-        const ad = $('avoidDept').value.trim() || '해당 부서';
-        const ar = $('avoidReason').value.trim() || '업무 연속성 및 전문성 유지 등';
-        paragraph2 = `2. 귀하께서 민원을 제기하실 때 ${ad}를 기피신청하셨으나, ${ar} 등의 사정을 고려할 때 부득이 ${ad}에서 답변드릴 수밖에 없음을 양해하여 주시기 바랍니다.`;
-      } else if (type === 'passive') {
-        const pr = $('passiveReason').value.trim() || '규정상의 절차';
-        paragraph2 = `2. 귀하의 소극행정 신고민원에 대하여 ${pr} 등의 사유로 부득이 감사부서가 아닌 ${dept}에서 답변드리는 것이 적절하다고 판단하였음을 양해하여 주시기 바랍니다.`;
-      }
-
-      let body = $('content').value.trim() || '가. \n나. ';
-      let closing = `5. 귀하의 문의에 대하여 만족스러운 답변이 되었기를 바라며, 추가 설명이 필요한 경우 ${dept} ${name} 주무관(☏${phone})에게 연락주시면 친절히 안내해 드리겠습니다.`;
-      if ($('surveyCheck').checked) {
-        closing += ` 아울러 우리 교육청은 민원서비스 품질 향상을 위해 노력하고 있습니다. 답변 내용에 만족하셨다면 아래 만족도 평가에 참여해 주시기 바라며, 해당 의견은 향후 서비스 개선을 위한 자료로 활용하겠습니다.`;
-      }
-      closing += ` 감사합니다.`;
-
-      const template =
-`제목 : 민원(${caseNum}) 처리결과 안내
-
-1. 안녕하십니까? ${dept}에 근무하는 ${name} 주무관입니다. 먼저 교육행정에 관심을 가져주신 데에 깊은 감사의 말씀을 드립니다.
-
-${paragraph2}
-
-3. 귀하의 민원 내용은 "${summary}"에 관한 것으로 이해(또는 판단)됩니다.
-
-4. 귀하의 문의 사항에 대해 검토한 의견은 다음과 같습니다.
-${body}
-
-${closing}`;
-
-      const area = $('resultArea');
-      area.textContent = '';
-
-      // 결과로 스크롤(옵션)
-      if (scrollToResult) {
-        const top = area.getBoundingClientRect().top + window.scrollY - 90;
-        window.scrollTo({ top, behavior: 'smooth' });
-      }
-
-      const chars = [...template];
-      let i = 0;
-
-      // ✅ 기존 타이핑 애니메이션 유지 (새로 생성될 때마다 처음부터)
-      const step = () => {
-        if (i < chars.length) {
-          area.textContent += chars[i++];
-          setTimeout(step, i < 80 ? 6 : 1);
-        } else {
-          $('resultDot').classList.add('active');
-          showToast('생성 완료 — 필요하면 다시 생성 가능', '✨');
-        }
-      };
-      step();
-
-      btn.disabled = false;
-      $('btnText').style.display = 'inline';
-      $('btnSpin').style.display = 'none';
-    }
-
-    /* ── 복사 ── */
-    async function copyText() {
-      const text = $('resultArea').innerText.trim();
-      if (!text || text.includes('여기에 표준 규격')) { showToast('먼저 서식을 생성해 주세요.', '⚠️'); return; }
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('클립보드에 복사되었습니다.', '📋');
-      } catch {
-        const range = document.createRange(); range.selectNodeContents($('resultArea'));
-        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-        try { document.execCommand('copy'); sel.removeAllRanges(); showToast('복사되었습니다. (대체 방식)', '📋'); }
-        catch { showToast('복사 실패 — 수동으로 복사해 주세요.', '❌'); }
-      }
-    }
-
-    /* ── 이벤트 연결 ── */
-    $('btnGenerate').addEventListener('click', () => generate({ clearArea:true, resetDot:true }));
-    $('btnGenerate').addEventListener('pointerdown', e => ripple($('btnGenerate'), e));
-    $('btnCopy').addEventListener('click', copyText);
-    $('btnCopy').addEventListener('pointerdown', e => ripple($('btnCopy'), e));
-    $('btnAI').addEventListener('pointerdown', e => ripple($('btnAI'), e));
-
-    // Ctrl/⌘ + Enter → 생성(수동 새로고침)
-    document.addEventListener('keydown', e => {
-      const mod = navigator.platform.toUpperCase().includes('MAC') ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === 'Enter') { e.preventDefault(); generate({ clearArea:true, resetDot:true, scrollToResult:true }); }
-    });
-
-    window.addEventListener('load', () => $('caseNum').focus());
-  </script>
+let rsRunning=false;
+async function reScan(){
+  if(rsRunning)return;rsRunning=true;
+  const ico=$('rIco');if(ico)ico.style.animation='spin .5s linear infinite';
+  const sc=calcScore();
+  for(let i=1;i<=8;i++){const e=$('mi'+i);if(!e)continue;e.classList.add('blink');await delay(80);e.classList.remove('blink');}
+  syncMini(sc);updateHint(sc);const sv=$('sVal');if(sv)sv.textContent=sc.total;
+  if(ico)ico.style.animation='';rsRunning=false;toast('재채점 완료! '+sc.total+'점','📊');
+}
+async function doReGen(){
+  const sc=calcScore();const tpl=buildTpl();curResult=tpl;
+  const ld=$('liveDot');if(ld)ld.style.display='inline-block';
+  await typeIn($('resBox'),tpl);if(ld)ld.style.display='none';
+  syncMini(sc);updateHint(sc);
+}
+function onEdit(){const box=$('resBox');if(!box)return;curResult=box.value;$('resCt').textContent=box.value.length+'자';}
+function doCopy(){
+  const box=$('resBox');const txt=box?box.value:curResult;
+  if(!txt||!txt.trim()){toast('먼저 서식을 생성해주세요','⚠️');return;}
+  if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+    navigator.clipboard.writeText(txt).then(()=>toast('복사됐어요! 📋','📋')).catch(()=>_legacyCopy(txt));return;
+  }
+  _legacyCopy(txt);
+}
+function _legacyCopy(txt){
+  const box=$('resBox');
+  if(box){box.focus();box.select();box.setSelectionRange(0,txt.length);
+    try{if(document.execCommand('copy')){toast('복사됐어요! 📋','📋');return;}}catch(e){}}
+  const ta=document.createElement('textarea');
+  Object.assign(ta.style,{position:'fixed',top:'0',left:'0',width:'2px',height:'2px',opacity:'0',pointerEvents:'none'});
+  ta.value=txt;document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');toast('복사됐어요! 📋','📋');}
+  catch{toast('서식을 선택 후 Ctrl+C 하세요','⚠️');}
+  document.body.removeChild(ta);
+}
+async function typeIn(el,tpl){
+  el.value='';$('resCt').textContent='0자';
+  const chars=[...tpl];let i=0;
+  await new Promise(res=>{const go=()=>{if(i<chars.length){el.value+=chars[i++];$('resCt').textContent=el.value.length+'자';setTimeout(go,i<80?4:1);}else res();};go();});
+  curResult=el.value;
+}
+function cntUp(id,from,to,dur){
+  const el=$(id);if(!el)return;let t=0;const iv=16;
+  const tid=setInterval(()=>{t+=iv;el.textContent=Math.min(Math.round(from+(to-from)*(t/dur)),to);if(t>=dur){el.textContent=to;clearInterval(tid);}},iv);
+}
+function restart(){
+  isPublic=null;mType='normal';wSurvey=null;aiSum='';aiDraft='';curResult='';inSplit=false;
+  $('rawTxt').value='';
+  ['dCase','dOrg','dDept','dName','dPhone','rCase','rOrg','rDept','rName','rPhone'].forEach(id=>{const e=$(id);if(e)e.value='';});
+  ['cPub','cPrv','cNorm','cTr','cAv','cPa','cSY','cSN'].forEach(id=>$(id)?.classList.remove('sel'));
+  $('cNorm').classList.add('sel');
+  $('sPill').style.display='none';$('restBtn').style.display='none';
+  $('bNum').textContent='0';$('bRing').style.strokeDashoffset='345';
+  $('mNum').textContent='0';$('mRing').style.strokeDashoffset='151';
+  $('mGr').textContent='-';$('mSub').textContent='';$('resBox').value='';$('resCt').textContent='0자';
+  $('s6').classList.remove('show');$('s6').classList.add('out');
+  setTimeout(()=>{$('s6').classList.remove('out');$('s0').classList.add('show');curScr='s0';setStep(0);},300);
+}
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+window.addEventListener('load',()=>$('hSt').textContent='온라인');
+</script>
 </body>
 </html>
